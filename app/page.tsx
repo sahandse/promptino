@@ -9,6 +9,7 @@ import {
 import { prompts } from "@/data/prompts";
 import FavoriteButton from "@/components/FavoriteButton";
 import VisualFeed from "@/components/VisualFeed";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Home() {
   const [query, setQuery] = useState("");
@@ -39,13 +40,16 @@ export default function Home() {
           <span>Promptino</span>
         </Link>
 
-        <nav className="desktop-nav">
+        <div className="topbar-actions">
+          <ThemeToggle />
+          <nav className="desktop-nav">
           <Link href="/media-favorites">علاقه‌مندی‌ها</Link>
           <Link href="/sources">منابع</Link>
           <Link href="/favorites" className="ghost-btn">
             <Bookmark size={18} /> ذخیره‌ها
           </Link>
-        </nav>
+          </nav>
+        </div>
       </header>
 
       <section className="app-search-wrap container">
