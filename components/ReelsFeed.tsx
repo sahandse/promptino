@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, Pause, Play, Share2, Volume2, VolumeX } from "lucide-react";
+import { Check, Copy, ExternalLink, Heart, ImageIcon, Pause, Play, Share2, Video, Volume2, VolumeX } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
@@ -199,6 +199,7 @@ function ReelsSlide({
 
 export default function ReelsFeed() {
   const [items, setItems] = useState<GalleryItem[]>([]);
+  const [filter, setFilter] = useState<"all" | "image" | "video">("all");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -237,23 +238,36 @@ export default function ReelsFeed() {
 
     root.querySelectorAll<HTMLElement>("[data-reel-id]").forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, [items]);
+  }, [items, filter]);
 
-  const ordered = useMemo(
-    () => [...items].sort((a, b) => b.likes - a.likes || b.qualityScore - a.qualityScore),
-    [items],
-  );
+  const ordered = useMemo(() => {
+    const filtered = filter === "all" ? items : items.filter((item) => item.kind === filter);
+    return [...filtered].sort((a, b) => b.likes - a.likes || b.qualityScore - a.qualityScore);
+  }, [items, filter]);
 
   if (error) {
     return <div className="reels-empty">دریافت فید واقعی ناموفق بود؛ داده دمو نمایش داده نمی‌شود.</div>;
   }
 
   return (
-    <div className="reels-feed" ref={containerRef}>
+    <div className="reels-shell">
+      <div className="reels-filter" role="tablist" aria-label="نوع ریلز">
+        <button className={filter === "all" ? "active" : ""} onClick={() => { setFilter("all"); setActiveId(null); }}>
+          همه
+        </button>
+        <button className={filter === "image" ? "active" : ""} onClick={() => { setFilter("image"); setActiveId(null); }}>
+          <ImageIcon size={15} /> عکس
+        </button>
+        <button className={filter === "video" ? "active" : ""} onClick={() => { setFilter("video"); setActiveId(null); }}>
+          <Video size={15} /> ویدیو
+        </button>
+      </div>
+      <div className="reels-feed" ref={containerRef}>
       {ordered.map((item) => (
         <ReelsSlide key={item.id} item={item} active={activeId === item.id} />
       ))}
-      {!ordered.length && <div className="reels-loading">در حال دریافت فید واقعی…</div>}
+      {!ordered.length && <div className="reels-loading">موردی در این بخش وجود ندارد.</div>}
+      </div>
     </div>
   );
 }
