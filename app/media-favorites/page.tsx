@@ -77,9 +77,9 @@ export default function MediaFavoritesPage() {
               </div>
 
               <div className="visual-card-body">
-                <div className="visual-meta"><span>{item.model}</span><span>{item.kind === "video" ? "ویدیو" : "تصویر"}</span></div>
+                <div className="visual-meta"><span>{item.category}</span><span>{item.kind === "video" ? "ویدیو" : "تصویر"}</span></div>
                 <h3>{item.title}</h3>
-                <p>{item.prompt}</p>
+                <p dir="auto">{item.prompt}</p>
                 <div className="visual-actions">
                   <button className="copy-btn" onClick={() => copy(item.id, item.prompt)}>
                     {copied === item.id ? <Check size={17} /> : <Copy size={17} />}
