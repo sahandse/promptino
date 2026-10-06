@@ -241,7 +241,7 @@ export default function ReelsFeed() {
 
     root.querySelectorAll<HTMLElement>("[data-reel-id]").forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, [ordered.length]);
+  }, [items, filter, visibleCount]);
 
   const orderedAll = useMemo(() => {
     const filtered = filter === "all" ? items : items.filter((item) => item.kind === filter);
@@ -249,6 +249,14 @@ export default function ReelsFeed() {
   }, [items, filter]);
 
   const ordered = useMemo(() => orderedAll.slice(0, visibleCount), [orderedAll, visibleCount]);
+
+  useEffect(() => {
+    if (!activeId || visibleCount >= orderedAll.length) return;
+    const index = ordered.findIndex((item) => item.id === activeId);
+    if (index >= ordered.length - 4) {
+      setVisibleCount((count) => Math.min(count + REELS_BATCH, orderedAll.length));
+    }
+  }, [activeId, ordered, orderedAll.length, visibleCount]);
 
   useEffect(() => {
     setVisibleCount(REELS_BATCH);
@@ -278,21 +286,6 @@ export default function ReelsFeed() {
         <ReelsSlide key={item.id} item={item} active={activeId === item.id} />
       ))}
       {!ordered.length && <div className="reels-loading">موردی در این بخش وجود ندارد.</div>}
-      {visibleCount < orderedAll.length && (
-        <div
-          className="reels-load-more"
-          ref={(node) => {
-            if (!node) return;
-            const observer = new IntersectionObserver((entries) => {
-              if (entries[0]?.isIntersecting) {
-                setVisibleCount((count) => Math.min(count + REELS_BATCH, orderedAll.length));
-                observer.disconnect();
-              }
-            }, { root: containerRef.current, rootMargin: "120% 0px" });
-            observer.observe(node);
-          }}
-        />
-      )}
       </div>
     </div>
   );
