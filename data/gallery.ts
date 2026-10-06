@@ -16,6 +16,9 @@ export type GalleryItem = {
   likes: number;
   sourceLicense: string;
   rightsHolder: string;
+  providerId: string;
+  providerName: string;
+  translatedPrompt?: string | null;
 };
 
 export type VisualFeedMedia = {
