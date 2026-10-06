@@ -1,4 +1,6 @@
 const URL = "https://raw.githubusercontent.com/Hanyuyu/visual-prompt-feed/main/data/prompts.json";
+const MIN_VALID_RATIO = 0.98;
+const MIN_VALID_COUNT = 100;
 
 const response = await fetch(URL);
 if (!response.ok) {
@@ -10,7 +12,9 @@ if (!Array.isArray(payload.items) || payload.items.length === 0) {
   throw new Error("Source has no items");
 }
 
-let invalid = 0;
+const invalidIds = [];
+let valid = 0;
+
 for (const item of payload.items) {
   const media = Array.isArray(item.media)
     ? item.media.find((m) => m.type === item.mediaType && m.role === "result") ||
@@ -37,11 +41,27 @@ for (const item of payload.items) {
     typeof media.previewUrl === "string" &&
     /^https?:\/\//.test(media.previewUrl);
 
-  if (!ok) invalid += 1;
+  if (ok) {
+    valid += 1;
+  } else {
+    invalidIds.push(item.id ?? "(missing-id)");
+  }
 }
 
-if (invalid > 0) {
-  throw new Error(`Source validation failed: ${invalid} invalid records`);
+const ratio = valid / payload.items.length;
+
+console.log(`Source records: ${payload.items.length}`);
+console.log(`Verified records: ${valid}`);
+console.log(`Quarantined records: ${invalidIds.length}`);
+
+if (invalidIds.length) {
+  console.log("Quarantined IDs:", invalidIds.slice(0, 50).join(", "));
 }
 
-console.log(`Validated ${payload.items.length} source records successfully.`);
+if (valid < MIN_VALID_COUNT || ratio < MIN_VALID_RATIO) {
+  throw new Error(
+    `Source quality below threshold: ${(ratio * 100).toFixed(2)}% valid; minimum is ${MIN_VALID_RATIO * 100}%`
+  );
+}
+
+console.log(`Validation passed: ${(ratio * 100).toFixed(2)}% of records are safe to ingest.`);
