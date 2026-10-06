@@ -109,6 +109,9 @@ export function toGalleryItem(record: VisualFeedRecord): GalleryItem | null {
     likes: record.source.engagement?.likes ?? 0,
     sourceLicense: record.source.license,
     rightsHolder: record.source.rightsHolder,
+    providerId: "visual-prompt-feed",
+    providerName: "Visual Prompt Feed",
+    translatedPrompt: null,
   };
 }
 
