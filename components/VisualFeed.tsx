@@ -153,6 +153,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [provider, setProvider] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [localRevision, setLocalRevision] = useState(0);
   const sentinel = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -262,12 +263,12 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     }
 
     return result;
-  }, [items, tab, query, mode, category, model, language, provider]);
+  }, [items, tab, query, mode, category, model, language, provider, localRevision]);
 
   const visible = useMemo(() => tabItems.slice(0, visibleCount), [tabItems, visibleCount]);
 
   useEffect(() => {
-    const sync = () => setVisibleCount((current) => current);
+    const sync = () => setLocalRevision((value) => value + 1);
     window.addEventListener("promptino:favorites-changed", sync);
     window.addEventListener("promptino:history-changed", sync);
     return () => {
