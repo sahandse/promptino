@@ -82,6 +82,10 @@ export function isSafePublicRecord(record: VisualFeedRecord) {
   const blocked = [
     "nsfw","porn","explicit sexual","nude","nudity","fetish","onlyfans","fanvue",
     "lingerie","bikini","cleavage","成人","色情","情趣","内衣","比基尼",
+    "suicide","self-harm","self harm","cutting challenge",
+    "gun tutorial","weapon tutorial","explosive tutorial","bomb making",
+    "drug use tutorial","how to smoke","cocaine","heroin","methamphetamine",
+    "gambling strategy","casino exploit","dangerous challenge"
   ];
   return !blocked.some((term) => text.includes(term));
 }
@@ -90,6 +94,18 @@ export function toGalleryItem(record: VisualFeedRecord): GalleryItem | null {
   if (!isVerifiedRecord(record) || !isSafePublicRecord(record)) return null;
   const media = resultMedia(record);
   if (!media) return null;
+
+  const qualityScore = Math.min(
+    100,
+    45 +
+      (record.prompt.length > 80 ? 12 : 0) +
+      (record.tags.length >= 2 ? 8 : 0) +
+      (record.categories.length >= 1 ? 8 : 0) +
+      (record.source.author.handle ? 8 : 0) +
+      (record.source.publishedAt ? 6 : 0) +
+      (media.previewUrl ? 8 : 0) +
+      (record.recommendedModel ? 5 : 0)
+  );
 
   return {
     id: record.id,
@@ -112,6 +128,7 @@ export function toGalleryItem(record: VisualFeedRecord): GalleryItem | null {
     providerId: "visual-prompt-feed",
     providerName: "Visual Prompt Feed",
     translatedPrompt: null,
+    qualityScore,
   };
 }
 
