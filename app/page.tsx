@@ -26,6 +26,7 @@ export default function Home() {
             <Link href="/media-favorites">علاقه‌مندی‌ها</Link>
             <Link href="/health">سلامت منابع</Link>
             <Link href="/stats">آمار من</Link>
+            <Link href="/reports">گزارش‌ها</Link>
             <Link href="/sources">منابع</Link>
           </nav>
         </div>
