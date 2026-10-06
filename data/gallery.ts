@@ -9,8 +9,13 @@ export type GalleryItem = {
   sourceName: string;
   model: string;
   category: string;
+  categories: string[];
   tags: string[];
   language: string;
+  publishedAt: string | null;
+  likes: number;
+  sourceLicense: string;
+  rightsHolder: string;
 };
 
 export type VisualFeedMedia = {
@@ -38,7 +43,15 @@ export type VisualFeedRecord = {
       handle: string;
       name: string | null;
     };
+    publishedAt: string | null;
+    engagement?: {
+      likes?: number | null;
+      reposts?: number | null;
+      replies?: number | null;
+    };
     attribution: string;
+    license: string;
+    rightsHolder: string;
   };
   media: VisualFeedMedia[];
 };
