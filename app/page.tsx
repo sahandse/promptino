@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Search, Bookmark, Home as HomeIcon, Heart, Layers3 } from "lucide-react";
+import { Search, Home as HomeIcon, Heart, Layers3, Database } from "lucide-react";
 import VisualFeed from "@/components/VisualFeed";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -22,9 +22,6 @@ export default function Home() {
           <nav className="desktop-nav">
             <Link href="/media-favorites">علاقه‌مندی‌ها</Link>
             <Link href="/sources">منابع</Link>
-            <Link href="/favorites" className="ghost-btn">
-              <Bookmark size={18} /> ذخیره‌ها
-            </Link>
           </nav>
         </div>
       </header>
@@ -47,7 +44,7 @@ export default function Home() {
         <Link href="/" className="active"><HomeIcon size={20} /><span>خانه</span></Link>
         <a href="#visual-feed"><Layers3 size={20} /><span>فید</span></a>
         <Link href="/media-favorites"><Heart size={20} /><span>علاقه‌مندی</span></Link>
-        <Link href="/favorites"><Bookmark size={20} /><span>ذخیره‌ها</span></Link>
+        <Link href="/sources"><Database size={20} /><span>منابع</span></Link>
       </nav>
     </main>
   );
