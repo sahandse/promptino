@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { prompts, type PromptType } from "@/data/prompts";
 import FavoriteButton from "@/components/FavoriteButton";
+import VisualFeed from "@/components/VisualFeed";
 
 const filters: { label: string; value: "all" | PromptType; icon: React.ReactNode }[] = [
   { label: "همه", value: "all", icon: <Sparkles size={18} /> },
@@ -105,6 +106,8 @@ export default function Home() {
           </article>
         ))}
       </section>
+
+      <VisualFeed />
 
       <section className="sources container" id="sources">
         <div>
