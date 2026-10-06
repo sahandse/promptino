@@ -245,3 +245,17 @@ button,a,input,select{touch-action:manipulation}
 @media(max-width:760px){
   .reels-filter{top:calc(56px + env(safe-area-inset-top))}
 }
+
+.minimal-home-feed{padding-top:8px}
+.simple-media-tabs{margin-bottom:12px}
+.simple-card .visual-card-body{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.simple-card .visual-card-body h3{margin:0;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.minimal-copy{flex:0 0 auto;width:auto;padding:8px 10px;border-radius:10px;font-size:10px}
+.minimal-detail .media-modal-info{gap:16px}
+@media(max-width:760px){
+  .minimal-home-feed{padding-top:2px}
+  .simple-media-tabs{position:sticky;top:118px;z-index:20;background:rgba(9,11,16,.94);backdrop-filter:blur(14px);padding:7px 0 9px;margin-bottom:8px}
+  .simple-card .visual-card-body{padding:8px 9px}
+  .simple-card .visual-card-body h3{font-size:11.5px}
+  .minimal-copy{padding:7px 8px;font-size:9px}
+}
