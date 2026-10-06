@@ -19,6 +19,7 @@ export type GalleryItem = {
   providerId: string;
   providerName: string;
   translatedPrompt?: string | null;
+  qualityScore: number;
 };
 
 export type VisualFeedMedia = {
