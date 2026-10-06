@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle, Check, Copy, ExternalLink, Heart, ImageIcon, Play, Video, X,
   BadgeCheck, Flag, Link2, Clock3, Flame, Bookmark, History, RefreshCw, SlidersHorizontal,
-  Shuffle, Sparkles, Star,
+  Shuffle, Sparkles, Star, Share2,
 } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import {
@@ -178,6 +178,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [localRevision, setLocalRevision] = useState(0);
   const sentinel = useRef<HTMLDivElement | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -382,6 +383,24 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     recordCopy(item);
   }
 
+  async function shareSelected(item: GalleryItem) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("item", item.id);
+    if (navigator.share) {
+      await navigator.share({ title: item.title, text: item.prompt.slice(0, 180), url: url.toString() }).catch(() => undefined);
+    } else {
+      await navigator.clipboard.writeText(url.toString());
+    }
+  }
+
+  function moveSelected(delta: number) {
+    if (!selected || !tabItems.length) return;
+    const index = tabItems.findIndex((item) => item.id === selected.id);
+    if (index < 0) return;
+    const next = tabItems[(index + delta + tabItems.length) % tabItems.length];
+    if (next) openItem(next);
+  }
+
   return (
     <section className="visual-feed-section container" id="visual-feed">
       <div className="media-tabs-wrap">
@@ -402,6 +421,14 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
             <RefreshCw size={14} />
           </button>
         </div>
+      </div>
+
+      <div className="quick-chips">
+        {categories.slice(0, 7).map((value) => (
+          <button key={value} className={category === value ? "quick-chip active" : "quick-chip"} onClick={() => setCategory(category === value ? "all" : value)}>
+            {value}
+          </button>
+        ))}
       </div>
 
       <div className="discover-actions">
@@ -496,12 +523,19 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
           <div
             className="media-modal-card bottom-sheet"
             onClick={(event) => event.stopPropagation()}
-            onTouchStart={(event) => { touchStartY.current = event.touches[0]?.clientY ?? null; }}
+            onTouchStart={(event) => {
+              touchStartY.current = event.touches[0]?.clientY ?? null;
+              touchStartX.current = event.touches[0]?.clientX ?? null;
+            }}
             onTouchEnd={(event) => {
-              if (touchStartY.current == null) return;
-              const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
-              if (endY - touchStartY.current > 90) closeItem();
+              const endY = event.changedTouches[0]?.clientY ?? touchStartY.current ?? 0;
+              const endX = event.changedTouches[0]?.clientX ?? touchStartX.current ?? 0;
+              const dy = touchStartY.current == null ? 0 : endY - touchStartY.current;
+              const dx = touchStartX.current == null ? 0 : endX - touchStartX.current;
+              if (dy > 90 && Math.abs(dy) > Math.abs(dx)) closeItem();
+              else if (Math.abs(dx) > 70) moveSelected(dx < 0 ? 1 : -1);
               touchStartY.current = null;
+              touchStartX.current = null;
             }}
           >
             <div className="sheet-handle" aria-hidden="true" />
@@ -556,6 +590,9 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
                 )}
                 <button className="source-btn action-button" onClick={() => copyLink(selected)}>
                   <Link2 size={15} /> کپی لینک
+                </button>
+                <button className="source-btn action-button" onClick={() => shareSelected(selected)}>
+                  <Share2 size={15} /> اشتراک
                 </button>
                 <a className="source-btn action-button" href={selected.sourceUrl} target="_blank" rel="noreferrer">
                   منبع اصلی <ExternalLink size={15} />
