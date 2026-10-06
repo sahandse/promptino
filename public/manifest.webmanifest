@@ -1,0 +1,21 @@
+{
+  "name": "Promptino",
+  "short_name": "Promptino",
+  "description": "کتابخانه منبع‌دار پرامپت‌های واقعی تصویر و ویدیو",
+  "start_url": "/promptino/",
+  "scope": "/promptino/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "orientation": "portrait-primary",
+  "lang": "fa",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/promptino/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
