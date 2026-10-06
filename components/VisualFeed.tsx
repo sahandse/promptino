@@ -401,6 +401,49 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   async function shareSelected(item: GalleryItem) {
     const url = new URL(window.location.href);
     url.searchParams.set("item", item.id);
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1350;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#090b10";
+      ctx.fillRect(0, 0, 1080, 1350);
+      ctx.fillStyle = "#8b7cf6";
+      ctx.fillRect(72, 72, 16, 1206);
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "right";
+      ctx.font = "700 54px sans-serif";
+      ctx.fillText("Promptino", 970, 150);
+      ctx.font = "700 42px sans-serif";
+      ctx.fillText(item.title.slice(0, 58), 970, 245);
+      ctx.fillStyle = "#9aa4b6";
+      ctx.font = "28px sans-serif";
+      ctx.fillText(categoryLabel(item.category), 970, 310);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "28px monospace";
+      const words = cleanPromptText(item.prompt).slice(0, 380).split(" ");
+      const lines: string[] = [];
+      let line = "";
+      for (const word of words) {
+        const test = line ? line + " " + word : word;
+        if (ctx.measureText(test).width > 790) { lines.push(line); line = word; }
+        else line = test;
+        if (lines.length >= 9) break;
+      }
+      if (line && lines.length < 10) lines.push(line);
+      lines.forEach((value, index) => ctx.fillText(value, 970, 410 + index * 52));
+      ctx.fillStyle = "#8b7cf6";
+      ctx.font = "24px sans-serif";
+      ctx.fillText(url.toString(), 970, 1230);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", .92));
+      if (blob) {
+        const file = new File([blob], "promptino-share.png", { type: "image/png" });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ title: item.title, text: "Promptino", url: url.toString(), files: [file] }).catch(() => undefined);
+          return;
+        }
+      }
+    }
     if (navigator.share) {
       await navigator.share({ title: item.title, text: item.prompt.slice(0, 180), url: url.toString() }).catch(() => undefined);
     } else {
