@@ -53,7 +53,7 @@ export default function Home() {
         </a>
         <nav>
           <a href="#prompts">پرامپت‌ها</a>
-          <a href="#sources">منابع</a>
+          <a href="/sources">منابع</a>
           <button className="ghost-btn" aria-label="ذخیره‌ها">
             <Bookmark size={19} />
             ذخیره‌ها
@@ -137,7 +137,7 @@ export default function Home() {
         <div>
           <p className="section-kicker">شفافیت منابع</p>
           <h2>هر پرامپت، منبع خودش را دارد.</h2>
-          <p>Promptino منبع، مدل پیشنهادی و دسته‌بندی هر مورد را نگه می‌دارد تا آرشیو قابل اعتماد و قابل توسعه باشد.</p>
+          <p>Promptino منبع، مدل پیشنهادی و دسته‌بندی هر مورد را نگه می‌دارد تا آرشیو قابل اعتماد و قابل توسعه باشد.</p><a className="sources-link" href="/sources">مشاهده همه منابع <ExternalLink size={16} /></a>
         </div>
         <div className="source-stats">
           <div><strong>۳</strong><span>نوع محتوا</span></div>
