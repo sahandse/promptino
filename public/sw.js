@@ -2,6 +2,7 @@ const VERSION = "promptino-v1";
 const SHELL = [
   "/promptino/",
   "/promptino/explore/",
+  "/promptino/reels/",
   "/promptino/collections/",
   "/promptino/history/",
   "/promptino/media-favorites/",
