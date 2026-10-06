@@ -8,11 +8,12 @@ import {
 } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import {
-  FAVORITES_KEY, HISTORY_KEY, REPORTS_KEY,
-  cacheItems, readCachedItems, readFavorites, readJson, recordCopy,
-  toggleFavoriteItem, writeJson,
+  FAVORITES_KEY, HISTORY_KEY, REPORTS_KEY, VIEWED_KEY,
+  cacheItems, cleanPromptText, readCachedItems, readFavorites, readJson, recordCopy, recordViewed,
+  toggleFavoriteItem, writeJson, type ReportItem,
 } from "@/lib/visualSource";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
+import { categoryLabel, normalizeSearch } from "@/lib/labels";
 
 const BATCH = 18;
 
@@ -21,7 +22,7 @@ function haptic(ms = 10) {
 }
 
 type MediaTab = "image" | "video";
-type FeedMode = "all" | "new" | "popular" | "saved" | "history" | "for-you";
+type FeedMode = "all" | "new" | "popular" | "saved" | "history" | "viewed" | "for-you";
 
 function formatSyncTime(value: string | null) {
   if (!value) return "—";
@@ -126,7 +127,7 @@ function VisualCard({
 
         <div className="visual-tags">
           <span>{item.model}</span>
-          <span>{item.category}</span>
+          <span>{categoryLabel(item.category)}</span>
         </div>
 
         <div className="visual-actions">
@@ -261,7 +262,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   );
 
   const tabItems = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeSearch(query);
     const savedIds = new Set(readFavorites().map((item) => item.id));
     const historyIds = new Set(readJson<{ id: string }[]>(HISTORY_KEY, []).map((item) => item.id));
 
@@ -273,12 +274,16 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       if (provider !== "all" && item.providerId !== provider) return false;
       if (mode === "saved" && !savedIds.has(item.id)) return false;
       if (mode === "history" && !historyIds.has(item.id)) return false;
+      if (mode === "viewed") {
+        const viewedIds = new Set(readJson<{ id: string }[]>(VIEWED_KEY, []).map((entry) => entry.id));
+        if (!viewedIds.has(item.id)) return false;
+      }
       if (!q) return true;
 
-      return [
+      return normalizeSearch([
         item.title, item.prompt, item.model, item.category,
         item.sourceName, ...item.categories, ...item.tags,
-      ].join(" ").toLowerCase().includes(q);
+      ].join(" ")).includes(q);
     });
 
     if (mode === "for-you") {
@@ -307,6 +312,10 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     } else if (mode === "history") {
       const history = readJson<{ id: string; copiedAt: string }[]>(HISTORY_KEY, []);
       const order = new Map(history.map((entry, index) => [entry.id, index]));
+      result = [...result].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
+    } else if (mode === "viewed") {
+      const viewed = readJson<{ id: string; viewedAt: string }[]>(VIEWED_KEY, []);
+      const order = new Map(viewed.map((entry, index) => [entry.id, index]));
       result = [...result].sort((a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999));
     }
 
@@ -343,6 +352,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   }, [tabItems.length, visibleCount]);
 
   function openItem(item: GalleryItem) {
+    recordViewed(item);
     setSelected(item);
     const url = new URL(window.location.href);
     url.searchParams.set("item", item.id);
@@ -452,6 +462,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
           ["popular", "محبوب", <Flame size={14} key="p" />],
           ["saved", "ذخیره‌شده", <Bookmark size={14} key="s" />],
           ["history", "کپی‌های اخیر", <History size={14} key="h" />],
+          ["viewed", "دیده‌شده", <Clock3 size={14} key="v" />],
         ] as [FeedMode, string, React.ReactNode][]).map(([value, label, icon]) => (
           <button key={value} className={mode === value ? "feed-mode active" : "feed-mode"} onClick={() => setMode(value)}>
             {icon}{label}
