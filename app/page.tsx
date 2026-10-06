@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { prompts, type PromptType } from "@/data/prompts";
+import FavoriteButton from "@/components/FavoriteButton";
 
 const filters: { label: string; value: "all" | PromptType; icon: React.ReactNode }[] = [
   { label: "همه", value: "all", icon: <Sparkles size={18} /> },
@@ -112,7 +113,7 @@ export default function Home() {
 
             <div>
               <p className="category">{item.category}</p>
-              <h2>{item.title}</h2>
+              <h2><a href={`/prompt/${item.id}`}>{item.title}</a></h2>
               <p className="prompt-preview">{item.prompt}</p>
             </div>
 
