@@ -22,10 +22,7 @@ export default function Home() {
           <nav className="desktop-nav">
             <Link href="/reels">Reels</Link>
             <Link href="/explore">Explore</Link>
-            <Link href="/collections">مجموعه‌ها</Link>
-            <Link href="/history">تاریخچه</Link>
             <Link href="/media-favorites">علاقه‌مندی‌ها</Link>
-            <Link href="/stats">آمار من</Link>
           </nav>
         </div>
       </header>
