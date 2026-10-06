@@ -5,7 +5,8 @@ export const VISUAL_SOURCE_URL =
 
 export const FAVORITES_KEY = "promptino:media-favorite-items-v3";
 export const HISTORY_KEY = "promptino:copy-history-v1";
-export const REPORTS_KEY = "promptino:reported-items-v1";
+export const REPORTS_KEY = "promptino:reported-items-v2";
+export const VIEWED_KEY = "promptino:recently-viewed-v1";
 export const CACHE_DB = "promptino-cache";
 export const CACHE_STORE = "feeds";
 export const CACHE_KEY = "visual-feed-v1";
@@ -15,6 +16,18 @@ export type CopyHistoryItem = {
   title: string;
   prompt: string;
   copiedAt: string;
+};
+
+export type ViewedItem = {
+  id: string;
+  viewedAt: string;
+};
+
+export type ReportItem = {
+  id: string;
+  title: string;
+  sourceUrl: string;
+  reportedAt: string;
 };
 
 export function readJson<T>(key: string, fallback: T): T {
@@ -30,6 +43,24 @@ export function readJson<T>(key: string, fallback: T): T {
 export function writeJson<T>(key: string, value: T) {
   if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+export function cleanPromptText(value: string) {
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/[\t ]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export function recordViewed(item: GalleryItem) {
+  const current = readJson<ViewedItem[]>(VIEWED_KEY, []);
+  const next = [
+    { id: item.id, viewedAt: new Date().toISOString() },
+    ...current.filter((entry) => entry.id !== item.id),
+  ].slice(0, 120);
+  writeJson(VIEWED_KEY, next);
+  window.dispatchEvent(new Event("promptino:viewed-changed"));
 }
 
 export function recordCopy(item: GalleryItem) {
