@@ -115,7 +115,7 @@ function VisualCard({ item }: { item: GalleryItem }) {
   );
 }
 
-export default function VisualFeed() {
+export default function VisualFeed({ query = "" }: { query?: string }) {
   const [items, setItems] = useState<GalleryItem[]>(galleryItems);
   const [tab, setTab] = useState<MediaTab>("image");
   const [visibleCount, setVisibleCount] = useState(BATCH);
@@ -153,12 +153,19 @@ export default function VisualFeed() {
 
   useEffect(() => {
     setVisibleCount(BATCH);
-  }, [tab]);
+  }, [tab, query]);
 
-  const tabItems = useMemo(
-    () => items.filter((item) => item.kind === tab),
-    [items, tab],
-  );
+  const tabItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((item) => {
+      if (item.kind !== tab) return false;
+      if (!q) return true;
+      return [item.title, item.prompt, item.model, item.sourceName, ...item.tags]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [items, tab, query]);
 
   const visible = useMemo(
     () => tabItems.slice(0, visibleCount),
