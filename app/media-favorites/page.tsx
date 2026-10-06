@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Heart, Copy, ExternalLink, Play, Check } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 
-const KEY = "promptino:media-favorite-items";
+const KEY = "promptino:media-favorite-items-v2";
 
 function readItems(): GalleryItem[] {
   try {
@@ -65,7 +65,7 @@ export default function MediaFavoritesPage() {
               <div className="visual-media-wrap">
                 {item.kind === "video" ? (
                   <>
-                    <video className="visual-media" src={item.mediaUrl} controls playsInline preload="metadata" />
+                    <video className="visual-media" src={item.mediaUrl} poster={item.posterUrl || undefined} controls playsInline preload="metadata" />
                     <span className="media-kind-badge"><Play size={13} /> ویدیو</span>
                   </>
                 ) : (
@@ -77,7 +77,7 @@ export default function MediaFavoritesPage() {
               </div>
 
               <div className="visual-card-body">
-                <div className="visual-meta"><span>{item.category}</span><span>{item.kind === "video" ? "ویدیو" : "تصویر"}</span></div>
+                <div className="visual-meta"><span>{item.model}</span><span>{item.language.toUpperCase()}</span></div>
                 <h3>{item.title}</h3>
                 <p dir="auto">{item.prompt}</p>
                 <div className="visual-actions">
