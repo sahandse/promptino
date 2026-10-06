@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart, Copy, ExternalLink, Play, Check } from "lucide-react";
-import { galleryItems } from "@/data/gallery";
+import type { GalleryItem } from "@/data/gallery";
 
-const KEY = "promptino:media-favorites";
+const KEY = "promptino:media-favorite-items";
 
-function readIds(): string[] {
+function readItems(): GalleryItem[] {
   try {
     const value = JSON.parse(localStorage.getItem(KEY) || "[]");
     return Array.isArray(value) ? value : [];
@@ -17,22 +17,20 @@ function readIds(): string[] {
 }
 
 export default function MediaFavoritesPage() {
-  const [ids, setIds] = useState<string[]>([]);
+  const [items, setItems] = useState<GalleryItem[]>([]);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
-    const sync = () => setIds(readIds());
+    const sync = () => setItems(readItems());
     sync();
     window.addEventListener("promptino:favorites-changed", sync);
     return () => window.removeEventListener("promptino:favorites-changed", sync);
   }, []);
 
-  const items = useMemo(() => galleryItems.filter((item) => ids.includes(item.id)), [ids]);
-
   function remove(id: string) {
-    const next = readIds().filter((item) => item !== id);
+    const next = readItems().filter((item) => item.id !== id);
     localStorage.setItem(KEY, JSON.stringify(next));
-    setIds(next);
+    setItems(next);
   }
 
   async function copy(id: string, text: string) {
@@ -77,7 +75,9 @@ export default function MediaFavoritesPage() {
                   <Heart size={18} fill="currentColor" />
                 </button>
               </div>
+
               <div className="visual-card-body">
+                <div className="visual-meta"><span>{item.model}</span><span>{item.kind === "video" ? "ویدیو" : "تصویر"}</span></div>
                 <h3>{item.title}</h3>
                 <p>{item.prompt}</p>
                 <div className="visual-actions">
