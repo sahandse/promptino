@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, Play } from "lucide-react";
+import { Check, Copy, ExternalLink, Heart, Play, ImageIcon, Video } from "lucide-react";
 import { galleryItems, type GalleryItem } from "@/data/gallery";
 
 const FAVORITES_KEY = "promptino:media-favorite-items";
@@ -11,6 +11,7 @@ const RAW_BASE = "https://raw.githubusercontent.com/benyshen/awesome-image-promp
 const BLOB_BASE = "https://github.com/benyshen/awesome-image-prompts/blob/main/";
 
 type TreeEntry = { path?: string; type?: string };
+type MediaTab = "image" | "video";
 
 function readFavorites(): GalleryItem[] {
   if (typeof window === "undefined") return [];
@@ -26,10 +27,13 @@ function makeItem(path: string): GalleryItem {
   const isVideo = path.startsWith("videos/");
   const filename = path.split("/").pop() || path;
   const id = `source-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
+
   return {
     id,
     kind: isVideo ? "video" : "image",
-    title: isVideo ? `ویدیوی AI — ${filename.replace(/\.mp4$/i, "")}` : `تصویر AI — ${filename.replace(/\.(jpg|jpeg|png|webp)$/i, "")}`,
+    title: isVideo
+      ? `ویدیوی AI — ${filename.replace(/\.mp4$/i, "")}`
+      : `تصویر AI — ${filename.replace(/\.(jpg|jpeg|png|webp)$/i, "")}`,
     prompt: isVideo
       ? "با الهام از این نمونه، یک ویدیوی تازه برای [موضوع شما] با حرکت دوربین طبیعی، نورپردازی حرفه‌ای، جزئیات واقعی و بدون متن روی تصویر تولید کن."
       : "با الهام از این نمونه، یک تصویر تازه برای [موضوع شما] با ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات طبیعی و بدون نوشته یا واترمارک تولید کن.",
@@ -52,7 +56,10 @@ function VisualCard({ item }: { item: GalleryItem }) {
   function toggleFavorite() {
     const current = readFavorites();
     const exists = current.some((savedItem) => savedItem.id === item.id);
-    const next = exists ? current.filter((savedItem) => savedItem.id !== item.id) : [...current, item];
+    const next = exists
+      ? current.filter((savedItem) => savedItem.id !== item.id)
+      : [...current, item];
+
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
     setSaved(!exists);
     window.dispatchEvent(new Event("promptino:favorites-changed"));
@@ -75,6 +82,7 @@ function VisualCard({ item }: { item: GalleryItem }) {
         ) : (
           <img className="visual-media" src={item.mediaUrl} alt={item.title} loading="lazy" decoding="async" />
         )}
+
         <button
           type="button"
           className={saved ? "media-favorite saved" : "media-favorite"}
@@ -93,10 +101,6 @@ function VisualCard({ item }: { item: GalleryItem }) {
         <h3>{item.title}</h3>
         <p>{item.prompt}</p>
 
-        <div className="visual-tags">
-          {item.tags.map((tag) => <span key={tag}>#{tag}</span>)}
-        </div>
-
         <div className="visual-actions">
           <button type="button" className="copy-btn" onClick={copyPrompt}>
             {copied ? <Check size={17} /> : <Copy size={17} />}
@@ -113,6 +117,7 @@ function VisualCard({ item }: { item: GalleryItem }) {
 
 export default function VisualFeed() {
   const [items, setItems] = useState<GalleryItem[]>(galleryItems);
+  const [tab, setTab] = useState<MediaTab>("image");
   const [visibleCount, setVisibleCount] = useState(BATCH);
   const [loadingSource, setLoadingSource] = useState(true);
   const sentinel = useRef<HTMLDivElement | null>(null);
@@ -132,17 +137,13 @@ export default function VisualFeed() {
           .filter((entry) => entry.type === "blob" && typeof entry.path === "string")
           .map((entry) => entry.path as string)
           .filter((path) =>
-            (/^images\/.+\.(jpg|jpeg|png|webp)$/i.test(path) || /^videos\/.+\.mp4$/i.test(path))
+            /^images\/.+\.(jpg|jpeg|png|webp)$/i.test(path) ||
+            /^videos\/.+\.mp4$/i.test(path),
           );
 
-        if (paths.length) {
-          const dynamicItems = paths.map(makeItem);
-          setItems(dynamicItems);
-        }
+        if (paths.length) setItems(paths.map(makeItem));
       })
-      .catch(() => {
-        // Static fallback already loaded.
-      })
+      .catch(() => {})
       .finally(() => {
         if (alive) setLoadingSource(false);
       });
@@ -150,7 +151,19 @@ export default function VisualFeed() {
     return () => { alive = false; };
   }, []);
 
-  const visible = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
+  useEffect(() => {
+    setVisibleCount(BATCH);
+  }, [tab]);
+
+  const tabItems = useMemo(
+    () => items.filter((item) => item.kind === tab),
+    [items, tab],
+  );
+
+  const visible = useMemo(
+    () => tabItems.slice(0, visibleCount),
+    [tabItems, visibleCount],
+  );
 
   useEffect(() => {
     const node = sentinel.current;
@@ -159,7 +172,7 @@ export default function VisualFeed() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setVisibleCount((current) => Math.min(current + BATCH, items.length));
+          setVisibleCount((current) => Math.min(current + BATCH, tabItems.length));
         }
       },
       { rootMargin: "900px 0px" },
@@ -167,32 +180,43 @@ export default function VisualFeed() {
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [items.length, visibleCount]);
+  }, [tabItems.length, visibleCount]);
 
   return (
     <section className="visual-feed-section container" id="visual-feed">
-      <div className="section-heading">
-        <div>
-          <p className="section-kicker">Visual Prompt Feed</p>
-          <h2>ببین، انتخاب کن، کپی کن.</h2>
-          <p>عکس و ویدیو داخل خود Promptino پخش و نمایش داده می‌شود؛ اسکرول ادامه‌دار و علاقه‌مندی هم فعال است.</p>
+      <div className="media-tabs-wrap">
+        <div className="media-tabs" role="tablist" aria-label="نوع رسانه">
+          <button
+            className={tab === "image" ? "media-tab active" : "media-tab"}
+            onClick={() => setTab("image")}
+          >
+            <ImageIcon size={18} />
+            عکس
+          </button>
+          <button
+            className={tab === "video" ? "media-tab active" : "media-tab"}
+            onClick={() => setTab("video")}
+          >
+            <Video size={18} />
+            ویدیو
+          </button>
         </div>
-        <div className="feed-stats">
-          <strong>{loadingSource ? "…" : items.length.toLocaleString("fa-IR") + "+"}</strong>
-          <span>رسانه از منبع متصل</span>
-        </div>
+
+        <span className="media-count">
+          {loadingSource ? "در حال دریافت…" : `${tabItems.length.toLocaleString("fa-IR")} مورد`}
+        </span>
       </div>
 
       <div className="visual-masonry">
         {visible.map((item) => <VisualCard key={item.id} item={item} />)}
       </div>
 
-      {visibleCount < items.length ? (
+      {visibleCount < tabItems.length ? (
         <div ref={sentinel} className="feed-loader" aria-label="بارگذاری بیشتر">
           <span /><span /><span />
         </div>
       ) : (
-        <div className="feed-end">همه موارد فعلی منبع بارگذاری شد ✦</div>
+        <div className="feed-end">همه موارد فعلی این بخش بارگذاری شد ✦</div>
       )}
     </section>
   );
