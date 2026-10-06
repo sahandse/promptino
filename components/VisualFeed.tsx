@@ -4,10 +4,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, Heart, Play } from "lucide-react";
 import { galleryItems, type GalleryItem } from "@/data/gallery";
 
-const FAVORITES_KEY = "promptino:media-favorites";
-const BATCH = 12;
+const FAVORITES_KEY = "promptino:media-favorite-items";
+const BATCH = 18;
+const TREE_URL = "https://api.github.com/repos/benyshen/awesome-image-prompts/git/trees/main?recursive=1";
+const RAW_BASE = "https://raw.githubusercontent.com/benyshen/awesome-image-prompts/main/";
+const BLOB_BASE = "https://github.com/benyshen/awesome-image-prompts/blob/main/";
 
-function readFavorites(): string[] {
+type TreeEntry = { path?: string; type?: string };
+
+function readFavorites(): GalleryItem[] {
   if (typeof window === "undefined") return [];
   try {
     const value = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
@@ -17,21 +22,39 @@ function readFavorites(): string[] {
   }
 }
 
+function makeItem(path: string): GalleryItem {
+  const isVideo = path.startsWith("videos/");
+  const filename = path.split("/").pop() || path;
+  const id = `source-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
+  return {
+    id,
+    kind: isVideo ? "video" : "image",
+    title: isVideo ? `ویدیوی AI — ${filename.replace(/\.mp4$/i, "")}` : `تصویر AI — ${filename.replace(/\.(jpg|jpeg|png|webp)$/i, "")}`,
+    prompt: isVideo
+      ? "با الهام از این نمونه، یک ویدیوی تازه برای [موضوع شما] با حرکت دوربین طبیعی، نورپردازی حرفه‌ای، جزئیات واقعی و بدون متن روی تصویر تولید کن."
+      : "با الهام از این نمونه، یک تصویر تازه برای [موضوع شما] با ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات طبیعی و بدون نوشته یا واترمارک تولید کن.",
+    mediaUrl: RAW_BASE + path,
+    sourceUrl: BLOB_BASE + path,
+    sourceName: "Awesome Image Prompts",
+    model: isVideo ? "Video AI" : "Image AI",
+    tags: isVideo ? ["ویدیو", "AI", "الهام"] : ["تصویر", "AI", "الهام"],
+  };
+}
+
 function VisualCard({ item }: { item: GalleryItem }) {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    setSaved(readFavorites().includes(item.id));
+    setSaved(readFavorites().some((savedItem) => savedItem.id === item.id));
   }, [item.id]);
 
   function toggleFavorite() {
     const current = readFavorites();
-    const next = current.includes(item.id)
-      ? current.filter((id) => id !== item.id)
-      : [...current, item.id];
+    const exists = current.some((savedItem) => savedItem.id === item.id);
+    const next = exists ? current.filter((savedItem) => savedItem.id !== item.id) : [...current, item];
     localStorage.setItem(FAVORITES_KEY, JSON.stringify(next));
-    setSaved(next.includes(item.id));
+    setSaved(!exists);
     window.dispatchEvent(new Event("promptino:favorites-changed"));
   }
 
@@ -46,23 +69,11 @@ function VisualCard({ item }: { item: GalleryItem }) {
       <div className="visual-media-wrap">
         {item.kind === "video" ? (
           <>
-            <video
-              className="visual-media"
-              src={item.mediaUrl}
-              controls
-              playsInline
-              preload="metadata"
-            />
+            <video className="visual-media" src={item.mediaUrl} controls playsInline preload="metadata" />
             <span className="media-kind-badge"><Play size={13} /> ویدیو</span>
           </>
         ) : (
-          <img
-            className="visual-media"
-            src={item.mediaUrl}
-            alt={item.title}
-            loading="lazy"
-            decoding="async"
-          />
+          <img className="visual-media" src={item.mediaUrl} alt={item.title} loading="lazy" decoding="async" />
         )}
         <button
           type="button"
@@ -101,13 +112,45 @@ function VisualCard({ item }: { item: GalleryItem }) {
 }
 
 export default function VisualFeed() {
+  const [items, setItems] = useState<GalleryItem[]>(galleryItems);
   const [visibleCount, setVisibleCount] = useState(BATCH);
+  const [loadingSource, setLoadingSource] = useState(true);
   const sentinel = useRef<HTMLDivElement | null>(null);
 
-  const visible = useMemo(
-    () => galleryItems.slice(0, visibleCount),
-    [visibleCount],
-  );
+  useEffect(() => {
+    let alive = true;
+
+    fetch(TREE_URL, { headers: { Accept: "application/vnd.github+json" } })
+      .then((response) => {
+        if (!response.ok) throw new Error("GitHub source unavailable");
+        return response.json();
+      })
+      .then((data: { tree?: TreeEntry[] }) => {
+        if (!alive || !Array.isArray(data.tree)) return;
+
+        const paths = data.tree
+          .filter((entry) => entry.type === "blob" && typeof entry.path === "string")
+          .map((entry) => entry.path as string)
+          .filter((path) =>
+            (/^images\/.+\.(jpg|jpeg|png|webp)$/i.test(path) || /^videos\/.+\.mp4$/i.test(path))
+          );
+
+        if (paths.length) {
+          const dynamicItems = paths.map(makeItem);
+          setItems(dynamicItems);
+        }
+      })
+      .catch(() => {
+        // Static fallback already loaded.
+      })
+      .finally(() => {
+        if (alive) setLoadingSource(false);
+      });
+
+    return () => { alive = false; };
+  }, []);
+
+  const visible = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
 
   useEffect(() => {
     const node = sentinel.current;
@@ -116,15 +159,15 @@ export default function VisualFeed() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setVisibleCount((current) => Math.min(current + BATCH, galleryItems.length));
+          setVisibleCount((current) => Math.min(current + BATCH, items.length));
         }
       },
-      { rootMargin: "700px 0px" },
+      { rootMargin: "900px 0px" },
     );
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, []);
+  }, [items.length, visibleCount]);
 
   return (
     <section className="visual-feed-section container" id="visual-feed">
@@ -132,11 +175,11 @@ export default function VisualFeed() {
         <div>
           <p className="section-kicker">Visual Prompt Feed</p>
           <h2>ببین، انتخاب کن، کپی کن.</h2>
-          <p>عکس و ویدیو داخل خود Promptino نمایش داده می‌شود؛ برای هر مورد منبع و علاقه‌مندی هم داری.</p>
+          <p>عکس و ویدیو داخل خود Promptino پخش و نمایش داده می‌شود؛ اسکرول ادامه‌دار و علاقه‌مندی هم فعال است.</p>
         </div>
         <div className="feed-stats">
-          <strong>{galleryItems.length}+</strong>
-          <span>نمونه اولیه؛ آرشیو در حال گسترش</span>
+          <strong>{loadingSource ? "…" : items.length.toLocaleString("fa-IR") + "+"}</strong>
+          <span>رسانه از منبع متصل</span>
         </div>
       </div>
 
@@ -144,14 +187,12 @@ export default function VisualFeed() {
         {visible.map((item) => <VisualCard key={item.id} item={item} />)}
       </div>
 
-      {visibleCount < galleryItems.length ? (
+      {visibleCount < items.length ? (
         <div ref={sentinel} className="feed-loader" aria-label="بارگذاری بیشتر">
-          <span />
-          <span />
-          <span />
+          <span /><span /><span />
         </div>
       ) : (
-        <div className="feed-end">فعلاً به انتهای این بخش رسیدی؛ منابع بیشتری اضافه می‌شوند ✦</div>
+        <div className="feed-end">همه موارد فعلی منبع بارگذاری شد ✦</div>
       )}
     </section>
   );
