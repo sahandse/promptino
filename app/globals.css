@@ -76,3 +76,16 @@ html[data-theme="light"] .media-favorite.saved{background:#fff0f3;color:#d92d20}
 @media(max-width:760px){.sync-status{display:none}.feed-mode-row{margin-inline:-2px}.feed-mode{padding:8px 10px;font-size:10px}.advanced-filters{grid-template-columns:1fr 1fr;padding:10px}.advanced-filters label{font-size:9px}.full-prompt{max-height:25vh}.stacked-actions{display:grid;grid-template-columns:1fr 1fr}.stacked-actions .copy-btn{grid-column:1/-1}.filter-toggle{margin-right:0}}
 
 .source-status{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:999px;font-size:10px}.source-status.active{background:#10271d;color:#7ee0ad;border:1px solid #1e4f38}.source-status.review{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* Phase 1: cleaner app-like cards + mobile bottom sheet */
+.visual-card-body{padding:12px 13px 13px}.visual-card h3{margin:0 0 9px;font-size:15px;line-height:1.55}.visual-tags{margin:8px 0 10px}.visual-meta{margin-bottom:7px}.visual-actions{margin-top:3px}.visual-card{transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}.visual-card:active{transform:scale(.99)}
+.sheet-handle{display:none}
+@media(max-width:760px){
+  .visual-card-body{padding:9px 10px 10px}.visual-card h3{font-size:12.5px;line-height:1.5;margin-bottom:7px}.visual-meta{font-size:8.5px}.visual-tags span{font-size:8.5px;padding:4px 5px}.visual-actions .copy-btn{min-height:34px}.visual-actions .source-btn{min-height:34px}
+  .media-modal{align-items:end;background:rgba(4,6,10,.68);backdrop-filter:blur(10px)}
+  .media-modal-card.bottom-sheet{width:100%;height:auto;max-height:92vh;border-radius:24px 24px 0 0;border:1px solid var(--line);border-bottom:0;grid-template-columns:1fr;grid-template-rows:auto auto;animation:sheetUp .24s ease-out;overflow:auto}
+  .sheet-handle{display:block;position:absolute;top:8px;left:50%;transform:translateX(-50%);width:42px;height:4px;border-radius:999px;background:#5b6473;z-index:4}
+  .media-modal-stage{min-height:220px;max-height:52vh;padding-top:18px}.media-modal-stage img,.media-modal-stage video{max-height:50vh}
+  .media-modal-info{padding:14px 14px calc(16px + env(safe-area-inset-bottom));max-height:40vh;overflow:auto}.media-modal-close{top:14px}
+}
+@keyframes sheetUp{from{transform:translateY(36px);opacity:.4}to{transform:translateY(0);opacity:1}}
