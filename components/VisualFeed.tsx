@@ -373,8 +373,13 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   }
 
   function reportItem(item: GalleryItem) {
-    const reports = readJson<string[]>(REPORTS_KEY, []);
-    if (!reports.includes(item.id)) writeJson(REPORTS_KEY, [...reports, item.id]);
+    const reports = readJson<ReportItem[]>(REPORTS_KEY, []);
+    if (!reports.some((report) => report.id === item.id)) {
+      writeJson(REPORTS_KEY, [
+        { id: item.id, title: item.title, sourceUrl: item.sourceUrl, reportedAt: new Date().toISOString() },
+        ...reports,
+      ]);
+    }
 
     const title = encodeURIComponent(`Prompt/media mapping report: ${item.id}`);
     const body = encodeURIComponent(
@@ -580,7 +585,8 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
                 <p className="full-prompt" dir="auto">{selected.prompt}</p>
 
                 <div className="detail-meta-list">
-                  <span>دسته: {selected.categories.join("، ")}</span>
+                  <span>دسته: {selected.categories.map(categoryLabel).join("، ")}</span>
+                  <span>Quality: {selected.qualityScore.toLocaleString("fa-IR")}%</span>
                   <span>نویسنده: {selected.sourceName}</span>
                   <span>حقوق منبع: {selected.sourceLicense}</span>
                   <span>ID: {selected.id}</span>
@@ -590,6 +596,9 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
               <div className="media-modal-actions stacked-actions">
                 <button className="copy-btn" onClick={() => copySelected(selected)}>
                   <Copy size={17} /> کپی پرامپت اصلی
+                </button>
+                <button className="source-btn action-button" onClick={() => navigator.clipboard.writeText(cleanPromptText(selected.prompt))}>
+                  <Copy size={15} /> Copy Clean
                 </button>
                 {selected.translatedPrompt && (
                   <button
