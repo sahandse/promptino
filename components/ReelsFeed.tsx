@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, Share2, Volume2, VolumeX } from "lucide-react";
+import { Check, Copy, ExternalLink, Heart, Pause, Play, Share2, Volume2, VolumeX } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
@@ -11,11 +11,15 @@ function ReelsVideo({
   item,
   active,
   muted,
+  paused,
+  onToggle,
   onBroken,
 }: {
   item: GalleryItem;
   active: boolean;
   muted: boolean;
+  paused: boolean;
+  onToggle: () => void;
   onBroken: () => void;
 }) {
   const ref = useRef<HTMLVideoElement | null>(null);
@@ -23,12 +27,13 @@ function ReelsVideo({
   useEffect(() => {
     const video = ref.current;
     if (!video) return;
-    if (active) video.play().catch(() => undefined);
-    else {
+    if (active && !paused) {
+      video.play().catch(() => undefined);
+    } else {
       video.pause();
-      video.currentTime = 0;
+      if (!active) video.currentTime = 0;
     }
-  }, [active]);
+  }, [active, paused]);
 
   return (
     <video
@@ -41,6 +46,7 @@ function ReelsVideo({
       playsInline
       preload="metadata"
       onError={onBroken}
+      onClick={onToggle}
     />
   );
 }
@@ -55,6 +61,7 @@ function ReelsSlide({
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [paused, setPaused] = useState(false);
   const [broken, setBroken] = useState(false);
 
   useEffect(() => {
@@ -65,7 +72,12 @@ function ReelsSlide({
   }, [item.id]);
 
   useEffect(() => {
-    if (active) recordViewed(item);
+    if (active) {
+      recordViewed(item);
+      setPaused(false);
+    } else {
+      setPaused(false);
+    }
   }, [active, item]);
 
   async function copyPrompt() {
@@ -96,7 +108,17 @@ function ReelsSlide({
     <article className="reels-slide" data-reel-id={item.id}>
       <div className="reels-stage">
         {item.kind === "video" ? (
-          <ReelsVideo item={item} active={active} muted={muted} onBroken={() => setBroken(true)} />
+          <ReelsVideo
+            item={item}
+            active={active}
+            muted={muted}
+            paused={paused}
+            onToggle={() => {
+              navigator.vibrate?.(6);
+              setPaused((value) => !value);
+            }}
+            onBroken={() => setBroken(true)}
+          />
         ) : (
           <img
             className="reels-media"
@@ -108,6 +130,16 @@ function ReelsSlide({
         )}
 
         <div className="reels-gradient" />
+
+        {item.kind === "video" && paused && (
+          <button
+            className="reels-play"
+            onClick={() => setPaused(false)}
+            aria-label="پخش ویدیو"
+          >
+            <Play size={34} fill="currentColor" />
+          </button>
+        )}
 
         {item.kind === "video" && (
           <button className="reels-sound" onClick={() => setMuted((value) => !value)} aria-label="صدا">
@@ -126,6 +158,13 @@ function ReelsSlide({
             <Heart size={25} fill={saved ? "currentColor" : "none"} />
             <span>ذخیره</span>
           </button>
+
+          {item.kind === "video" && (
+            <button onClick={() => setPaused((value) => !value)}>
+              {paused ? <Play size={25} /> : <Pause size={25} />}
+              <span>{paused ? "پخش" : "توقف"}</span>
+            </button>
+          )}
 
           <button onClick={copyPrompt}>
             {copied ? <Check size={25} /> : <Copy size={25} />}
