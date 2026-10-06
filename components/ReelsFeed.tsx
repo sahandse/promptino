@@ -197,8 +197,11 @@ function ReelsSlide({
   );
 }
 
+const REELS_BATCH = 18;
+
 export default function ReelsFeed() {
   const [items, setItems] = useState<GalleryItem[]>([]);
+  const [visibleCount, setVisibleCount] = useState(REELS_BATCH);
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [error, setError] = useState(false);
@@ -238,12 +241,20 @@ export default function ReelsFeed() {
 
     root.querySelectorAll<HTMLElement>("[data-reel-id]").forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, [items, filter]);
+  }, [ordered.length]);
 
-  const ordered = useMemo(() => {
+  const orderedAll = useMemo(() => {
     const filtered = filter === "all" ? items : items.filter((item) => item.kind === filter);
     return [...filtered].sort((a, b) => b.likes - a.likes || b.qualityScore - a.qualityScore);
   }, [items, filter]);
+
+  const ordered = useMemo(() => orderedAll.slice(0, visibleCount), [orderedAll, visibleCount]);
+
+  useEffect(() => {
+    setVisibleCount(REELS_BATCH);
+    setActiveId(null);
+    containerRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [filter]);
 
   if (error) {
     return <div className="reels-empty">دریافت فید واقعی ناموفق بود؛ داده دمو نمایش داده نمی‌شود.</div>;
@@ -267,6 +278,21 @@ export default function ReelsFeed() {
         <ReelsSlide key={item.id} item={item} active={activeId === item.id} />
       ))}
       {!ordered.length && <div className="reels-loading">موردی در این بخش وجود ندارد.</div>}
+      {visibleCount < orderedAll.length && (
+        <div
+          className="reels-load-more"
+          ref={(node) => {
+            if (!node) return;
+            const observer = new IntersectionObserver((entries) => {
+              if (entries[0]?.isIntersecting) {
+                setVisibleCount((count) => Math.min(count + REELS_BATCH, orderedAll.length));
+                observer.disconnect();
+              }
+            }, { root: containerRef.current, rootMargin: "120% 0px" });
+            observer.observe(node);
+          }}
+        />
+      )}
       </div>
     </div>
   );
