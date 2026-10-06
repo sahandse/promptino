@@ -60,7 +60,7 @@ export default function Home() {
         </div>
       </section>
 
-      <VisualFeed />
+      <VisualFeed query={query} />
 
       <section className="text-prompts container" id="text-prompts">
         <div className="compact-section-head">
