@@ -1,17 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  Copy,
-  Check,
-  Search,
-  Sparkles,
-  ImageIcon,
-  Video,
-  MessageSquareText,
-  Bookmark,
-  ExternalLink,
-  SlidersHorizontal,
+  Copy, Check, Search, Sparkles, ImageIcon, Video,
+  MessageSquareText, Bookmark, ExternalLink, SlidersHorizontal,
 } from "lucide-react";
 import { prompts, type PromptType } from "@/data/prompts";
 import FavoriteButton from "@/components/FavoriteButton";
@@ -33,8 +26,7 @@ export default function Home() {
     return prompts.filter((item) => {
       const matchesType = type === "all" || item.type === type;
       const haystack = [item.title, item.prompt, item.model, item.category, ...item.tags]
-        .join(" ")
-        .toLowerCase();
+        .join(" ").toLowerCase();
       return matchesType && (!q || haystack.includes(q));
     });
   }, [query, type]);
@@ -48,48 +40,35 @@ export default function Home() {
   return (
     <main>
       <header className="topbar container">
-        <a className="brand" href="#">
-          <span className="brand-mark">P</span>
-          <span>Promptino</span>
-        </a>
+        <Link className="brand" href="/">
+          <span className="brand-mark">P</span><span>Promptino</span>
+        </Link>
         <nav>
           <a href="#prompts">پرامپت‌ها</a>
-          <a href="/sources">منابع</a>
-          <button className="ghost-btn" aria-label="ذخیره‌ها">
-            <Bookmark size={19} />
-            ذخیره‌ها
-          </button>
+          <Link href="/sources">منابع</Link>
+          <Link className="ghost-btn" href="/favorites" aria-label="ذخیره‌ها">
+            <Bookmark size={19} /> ذخیره‌ها
+          </Link>
         </nav>
       </header>
 
       <section className="hero container">
         <div className="eyebrow"><Sparkles size={16} /> کتابخانه فارسی پرامپت</div>
         <h1>پرامپت خوب را پیدا کن،<br /><span>کپی کن و بساز.</span></h1>
-        <p>
-          مجموعه‌ای مرتب و منبع‌دار برای ChatGPT، Gemini، Claude، Midjourney،
-          Flux، Veo، Kling و ابزارهای دیگر.
-        </p>
+        <p>مجموعه‌ای مرتب و منبع‌دار برای ChatGPT، Gemini، Claude، Midjourney، Flux، Veo، Kling و ابزارهای دیگر.</p>
 
         <div className="searchbox">
           <Search size={21} />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="مثلاً: لوگو مینیمال، ویدیوی سینمایی، برنامه‌نویسی..."
-            aria-label="جستجوی پرامپت"
-          />
+          <input value={query} onChange={(e) => setQuery(e.target.value)}
+            placeholder="مثلاً: لوگو مینیمال، ویدیوی سینمایی، برنامه‌نویسی..." aria-label="جستجوی پرامپت" />
           <span className="search-kbd">⌘ K</span>
         </div>
 
         <div className="filter-row" id="prompts">
           {filters.map((filter) => (
-            <button
-              key={filter.value}
-              className={type === filter.value ? "filter active" : "filter"}
-              onClick={() => setType(filter.value)}
-            >
-              {filter.icon}
-              {filter.label}
+            <button key={filter.value} className={type === filter.value ? "filter active" : "filter"}
+              onClick={() => setType(filter.value)}>
+              {filter.icon}{filter.label}
             </button>
           ))}
           <span className="result-count"><SlidersHorizontal size={16} /> {filtered.length} پرامپت</span>
@@ -106,21 +85,14 @@ export default function Home() {
                 </span>
                 <span className="model-pill">{item.model}</span>
               </div>
-              <button className="icon-btn" aria-label="ذخیره">
-                <Bookmark size={18} />
-              </button>
+              <FavoriteButton id={item.id} compact />
             </div>
-
             <div>
               <p className="category">{item.category}</p>
-              <h2><a href={`/prompt/${item.id}`}>{item.title}</a></h2>
+              <h2><Link href={`/prompt/${item.id}`}>{item.title}</Link></h2>
               <p className="prompt-preview">{item.prompt}</p>
             </div>
-
-            <div className="tags">
-              {item.tags.slice(0, 3).map((tag) => <span key={tag}>#{tag}</span>)}
-            </div>
-
+            <div className="tags">{item.tags.slice(0, 3).map((tag) => <span key={tag}>#{tag}</span>)}</div>
             <div className="card-actions">
               <button className="copy-btn" onClick={() => copyPrompt(item.id, item.prompt)}>
                 {copied === item.id ? <Check size={18} /> : <Copy size={18} />}
@@ -138,7 +110,8 @@ export default function Home() {
         <div>
           <p className="section-kicker">شفافیت منابع</p>
           <h2>هر پرامپت، منبع خودش را دارد.</h2>
-          <p>Promptino منبع، مدل پیشنهادی و دسته‌بندی هر مورد را نگه می‌دارد تا آرشیو قابل اعتماد و قابل توسعه باشد.</p><a className="sources-link" href="/sources">مشاهده همه منابع <ExternalLink size={16} /></a>
+          <p>Promptino منبع، مدل پیشنهادی و دسته‌بندی هر مورد را نگه می‌دارد تا آرشیو قابل اعتماد و قابل توسعه باشد.</p>
+          <Link className="sources-link" href="/sources">مشاهده همه منابع <ExternalLink size={16} /></Link>
         </div>
         <div className="source-stats">
           <div><strong>۳</strong><span>نوع محتوا</span></div>
@@ -147,10 +120,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="container">
-        <span>Promptino</span>
-        <span>ساخته‌شده برای پیدا کردن ایده بهتر، سریع‌تر ✦</span>
-      </footer>
+      <footer className="container"><span>Promptino</span><span>ساخته‌شده برای پیدا کردن ایده بهتر، سریع‌تر ✦</span></footer>
     </main>
   );
 }
