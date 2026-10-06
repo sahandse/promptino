@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, Play, ImageIcon, Video, X } from "lucide-react";
-import { galleryItems, type GalleryItem } from "@/data/gallery";
+import { Check, Copy, ExternalLink, Heart, Play, ImageIcon, Video, X, AlertCircle } from "lucide-react";
+import type { GalleryItem, SourcePromptPayload, SourcePromptRecord } from "@/data/gallery";
 
 const FAVORITES_KEY = "promptino:media-favorite-items";
 const BATCH = 18;
-const TREE_URL = "https://api.github.com/repos/benyshen/awesome-image-prompts/git/trees/main?recursive=1";
+const DATA_URL = "https://raw.githubusercontent.com/benyshen/awesome-image-prompts/main/data/prompts.json";
 const RAW_BASE = "https://raw.githubusercontent.com/benyshen/awesome-image-prompts/main/";
-const BLOB_BASE = "https://github.com/benyshen/awesome-image-prompts/blob/main/";
+const REPO_BASE = "https://github.com/benyshen/awesome-image-prompts/blob/main/";
 
-type TreeEntry = { path?: string; type?: string };
 type MediaTab = "image" | "video";
 
 function readFavorites(): GalleryItem[] {
@@ -23,25 +22,51 @@ function readFavorites(): GalleryItem[] {
   }
 }
 
-function makeItem(path: string): GalleryItem {
-  const isVideo = path.startsWith("videos/");
-  const filename = path.split("/").pop() || path;
-  const id = `source-${path.replace(/[^a-zA-Z0-9]+/g, "-")}`;
+function detectLanguage(text: string): GalleryItem["language"] {
+  if (/[؀-ۿ]/.test(text)) return "fa";
+  if (/[A-Za-z]/.test(text)) return "en";
+  return "other";
+}
+
+function extractUrl(source?: string | null) {
+  if (!source) return "";
+  const markdown = source.match(/\((https?:\/\/[^)]+)\)/);
+  if (markdown?.[1]) return markdown[1];
+  const plain = source.match(/https?:\/\/[^\s·]+/);
+  return plain?.[0] || "";
+}
+
+function isSafePublicItem(record: SourcePromptRecord) {
+  const text = [record.title, record.prompt, record.source].filter(Boolean).join(" ").toLowerCase();
+  const blocked = [
+    "nsfw", "porn", "explicit sexual", "onlyfans", "fanvue",
+    "nude", "nudity", "fetish", "成人", "裸", "露骨",
+  ];
+  return !blocked.some((term) => text.includes(term));
+}
+
+function toGalleryItem(record: SourcePromptRecord): GalleryItem | null {
+  const prompt = record.prompt?.trim();
+  const mediaPath = record.media_type === "video" ? record.video : record.image;
+
+  if (!prompt || !mediaPath || !isSafePublicItem(record)) return null;
+
+  const kind: GalleryItem["kind"] = record.media_type === "video" ? "video" : "image";
+  const title = record.title?.trim() || `${kind === "video" ? "ویدیو" : "تصویر"} #${record.id}`;
+  const sourceUrl = extractUrl(record.source) || REPO_BASE + mediaPath;
+  const category = record.category?.trim() || record.orig_category?.trim() || (kind === "video" ? "video" : "image");
 
   return {
-    id,
-    kind: isVideo ? "video" : "image",
-    title: isVideo
-      ? `ویدیوی AI — ${filename.replace(/\.mp4$/i, "")}`
-      : `تصویر AI — ${filename.replace(/\.(jpg|jpeg|png|webp)$/i, "")}`,
-    prompt: isVideo
-      ? "با الهام از این نمونه، یک ویدیوی تازه برای [موضوع شما] با حرکت دوربین طبیعی، نورپردازی حرفه‌ای، جزئیات واقعی و بدون متن روی تصویر تولید کن."
-      : "با الهام از این نمونه، یک تصویر تازه برای [موضوع شما] با ترکیب‌بندی حرفه‌ای، نورپردازی دقیق، جزئیات طبیعی و بدون نوشته یا واترمارک تولید کن.",
-    mediaUrl: RAW_BASE + path,
-    sourceUrl: BLOB_BASE + path,
-    sourceName: "Awesome Image Prompts",
-    model: isVideo ? "Video AI" : "Image AI",
-    tags: isVideo ? ["ویدیو", "AI", "الهام"] : ["تصویر", "AI", "الهام"],
+    id: `source-${record.id}`,
+    kind,
+    title,
+    prompt,
+    mediaUrl: RAW_BASE + mediaPath,
+    sourceUrl,
+    sourceName: record.source?.trim() || "Awesome Image Prompts",
+    category,
+    tags: [category, kind === "video" ? "ویدیو" : "تصویر"],
+    language: detectLanguage(prompt),
   };
 }
 
@@ -95,11 +120,11 @@ function VisualCard({ item, onOpen }: { item: GalleryItem; onOpen: (item: Galler
 
       <div className="visual-card-body">
         <div className="visual-meta">
-          <span>{item.model}</span>
-          <span>{item.kind === "video" ? "ویدیو" : "تصویر"}</span>
+          <span>{item.category}</span>
+          <span>{item.language === "fa" ? "FA" : item.language === "en" ? "EN" : "Original"}</span>
         </div>
         <h3>{item.title}</h3>
-        <p>{item.prompt}</p>
+        <p dir="auto">{item.prompt}</p>
 
         <div className="visual-actions">
           <button type="button" className="copy-btn" onClick={copyPrompt}>
@@ -116,35 +141,37 @@ function VisualCard({ item, onOpen }: { item: GalleryItem; onOpen: (item: Galler
 }
 
 export default function VisualFeed({ query = "" }: { query?: string }) {
-  const [items, setItems] = useState<GalleryItem[]>(galleryItems);
+  const [items, setItems] = useState<GalleryItem[]>([]);
   const [tab, setTab] = useState<MediaTab>("image");
   const [visibleCount, setVisibleCount] = useState(BATCH);
   const [loadingSource, setLoadingSource] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
   const sentinel = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let alive = true;
 
-    fetch(TREE_URL, { headers: { Accept: "application/vnd.github+json" } })
+    fetch(DATA_URL, { cache: "no-store" })
       .then((response) => {
-        if (!response.ok) throw new Error("GitHub source unavailable");
+        if (!response.ok) throw new Error("Source unavailable");
         return response.json();
       })
-      .then((data: { tree?: TreeEntry[] }) => {
-        if (!alive || !Array.isArray(data.tree)) return;
+      .then((data: SourcePromptPayload) => {
+        if (!alive || !Array.isArray(data.items)) return;
+        const realItems = data.items
+          .map(toGalleryItem)
+          .filter((item): item is GalleryItem => Boolean(item));
 
-        const paths = data.tree
-          .filter((entry) => entry.type === "blob" && typeof entry.path === "string")
-          .map((entry) => entry.path as string)
-          .filter((path) =>
-            /^images\/.+\.(jpg|jpeg|png|webp)$/i.test(path) ||
-            /^videos\/.+\.mp4$/i.test(path),
-          );
-
-        if (paths.length) setItems(paths.map(makeItem));
+        setItems(realItems);
+        setLoadError(false);
       })
-      .catch(() => {})
+      .catch(() => {
+        if (alive) {
+          setItems([]);
+          setLoadError(true);
+        }
+      })
       .finally(() => {
         if (alive) setLoadingSource(false);
       });
@@ -161,7 +188,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     return items.filter((item) => {
       if (item.kind !== tab) return false;
       if (!q) return true;
-      return [item.title, item.prompt, item.model, item.sourceName, ...item.tags]
+      return [item.title, item.prompt, item.category, item.sourceName, ...item.tags]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -194,37 +221,38 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     <section className="visual-feed-section container" id="visual-feed">
       <div className="media-tabs-wrap">
         <div className="media-tabs" role="tablist" aria-label="نوع رسانه">
-          <button
-            className={tab === "image" ? "media-tab active" : "media-tab"}
-            onClick={() => setTab("image")}
-          >
-            <ImageIcon size={18} />
-            عکس
+          <button className={tab === "image" ? "media-tab active" : "media-tab"} onClick={() => setTab("image")}>
+            <ImageIcon size={18} /> عکس
           </button>
-          <button
-            className={tab === "video" ? "media-tab active" : "media-tab"}
-            onClick={() => setTab("video")}
-          >
-            <Video size={18} />
-            ویدیو
+          <button className={tab === "video" ? "media-tab active" : "media-tab"} onClick={() => setTab("video")}>
+            <Video size={18} /> ویدیو
           </button>
         </div>
 
         <span className="media-count">
-          {loadingSource ? "در حال دریافت…" : `${tabItems.length.toLocaleString("fa-IR")} مورد`}
+          {loadingSource ? "در حال دریافت…" : `${tabItems.length.toLocaleString("fa-IR")} مورد واقعی`}
         </span>
       </div>
 
-      <div className="visual-masonry">
-        {visible.map((item) => <VisualCard key={item.id} item={item} onOpen={setSelected} />)}
-      </div>
-
-      {visibleCount < tabItems.length ? (
-        <div ref={sentinel} className="feed-loader" aria-label="بارگذاری بیشتر">
-          <span /><span /><span />
+      {loadError ? (
+        <div className="source-error">
+          <AlertCircle size={20} />
+          <span>دریافت دیتای واقعی منبع ناموفق بود؛ هیچ داده دمو نمایش داده نمی‌شود.</span>
         </div>
       ) : (
-        <div className="feed-end">همه موارد فعلی این بخش بارگذاری شد ✦</div>
+        <>
+          <div className="visual-masonry">
+            {visible.map((item) => <VisualCard key={item.id} item={item} onOpen={setSelected} />)}
+          </div>
+
+          {visibleCount < tabItems.length ? (
+            <div ref={sentinel} className="feed-loader" aria-label="بارگذاری بیشتر">
+              <span /><span /><span />
+            </div>
+          ) : !loadingSource && (
+            <div className="feed-end">همه موارد واقعی فعلی این بخش بارگذاری شد ✦</div>
+          )}
+        </>
       )}
 
       {selected && (
@@ -244,9 +272,9 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
             <div className="media-modal-info">
               <div>
-                <span className="model-pill">{selected.model}</span>
+                <span className="model-pill">{selected.category}</span>
                 <h3>{selected.title}</h3>
-                <p>{selected.prompt}</p>
+                <p dir="auto">{selected.prompt}</p>
               </div>
               <div className="media-modal-actions">
                 <button className="copy-btn" onClick={() => navigator.clipboard.writeText(selected.prompt)}>
