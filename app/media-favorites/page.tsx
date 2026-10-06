@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Heart, Copy, ExternalLink, Play, Check } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 
-const KEY = "promptino:media-favorite-items-v2";
+const KEY = "promptino:media-favorite-items-v3";
 
 function readItems(): GalleryItem[] {
   try {
