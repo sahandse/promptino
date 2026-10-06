@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle, Check, Copy, ExternalLink, Heart, ImageIcon, Play, Video, X,
   BadgeCheck, Flag, Link2, Clock3, Flame, Bookmark, History, RefreshCw, SlidersHorizontal,
+  Shuffle, Sparkles, Star,
 } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import {
@@ -20,7 +21,7 @@ function haptic(ms = 10) {
 }
 
 type MediaTab = "image" | "video";
-type FeedMode = "all" | "new" | "popular" | "saved" | "history";
+type FeedMode = "all" | "new" | "popular" | "saved" | "history" | "for-you";
 
 function formatSyncTime(value: string | null) {
   if (!value) return "—";
@@ -33,6 +34,24 @@ function formatSyncTime(value: string | null) {
   }
 }
 
+function SmartVideo({ src, poster, onBroken }: { src: string; poster?: string | null; onBroken: () => void }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries[0]?.isIntersecting && (entries[0]?.intersectionRatio || 0) > 0.6;
+      if (visible) node.play().catch(() => undefined);
+      else node.pause();
+    }, { threshold: [0, .6, 1] });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return <video ref={ref} className="visual-media" src={src} poster={poster || undefined} muted loop playsInline preload="metadata" controls onError={onBroken} />;
+}
+
 function VisualCard({
   item,
   onOpen,
@@ -42,6 +61,7 @@ function VisualCard({
 }) {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [broken, setBroken] = useState(false);
 
   useEffect(() => {
     const sync = () => setSaved(readFavorites().some((savedItem) => savedItem.id === item.id));
@@ -63,20 +83,16 @@ function VisualCard({
     window.setTimeout(() => setCopied(false), 1400);
   }
 
+  if (broken) return null;
+
   return (
     <article className="visual-card">
       <div className="visual-media-wrap" onClick={() => onOpen(item)}>
         {item.kind === "video" ? (
           <>
-            <video
-              className="visual-media"
-              src={item.mediaUrl}
-              poster={item.posterUrl || undefined}
-              controls
-              playsInline
-              preload="metadata"
-              onClick={(event) => event.stopPropagation()}
-            />
+            <div onClick={(event) => event.stopPropagation()}>
+              <SmartVideo src={item.mediaUrl} poster={item.posterUrl} onBroken={() => setBroken(true)} />
+            </div>
             <span className="media-kind-badge"><Play size={13} /> ویدیو</span>
           </>
         ) : (
@@ -86,6 +102,7 @@ function VisualCard({
             alt={item.title}
             loading="lazy"
             decoding="async"
+            onError={() => setBroken(true)}
           />
         )}
 
@@ -172,7 +189,14 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       try {
         const adapters = getActiveAdapters();
         const batches = await Promise.all(adapters.map((adapter) => adapter.fetchItems()));
-        const realItems = batches.flat();
+        const merged = batches.flat();
+        const seen = new Set<string>();
+        const realItems = merged.filter((item) => {
+          const key = `${item.prompt.trim().toLowerCase()}::${item.mediaUrl}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
         if (!alive) return;
         setItems(realItems);
@@ -256,7 +280,24 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       ].join(" ").toLowerCase().includes(q);
     });
 
-    if (mode === "new") {
+    if (mode === "for-you") {
+      const preference = new Map<string, number>();
+      for (const saved of readFavorites()) {
+        for (const value of [...saved.categories, saved.model]) {
+          preference.set(value, (preference.get(value) || 0) + 3);
+        }
+      }
+      const history = readJson<{ id: string }[]>(HISTORY_KEY, []);
+      const historySet = new Set(history.map((entry) => entry.id));
+      result = [...result].sort((a, b) => {
+        const score = (item: GalleryItem) =>
+          item.categories.reduce((sum, value) => sum + (preference.get(value) || 0), 0) +
+          (preference.get(item.model) || 0) +
+          (historySet.has(item.id) ? 2 : 0) +
+          item.qualityScore / 20;
+        return score(b) - score(a);
+      });
+    } else if (mode === "new") {
       result = [...result].sort((a, b) =>
         new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
       );
@@ -363,9 +404,23 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
         </div>
       </div>
 
+      <div className="discover-actions">
+        <button onClick={() => {
+          if (!tabItems.length) return;
+          haptic(9);
+          openItem(tabItems[Math.floor(Math.random() * tabItems.length)]);
+        }}><Shuffle size={14}/> Surprise Me</button>
+        <button onClick={() => {
+          if (!tabItems.length) return;
+          const day = Math.floor(Date.now() / 86400000);
+          openItem(tabItems[day % tabItems.length]);
+        }}><Star size={14}/> Prompt of the Day</button>
+      </div>
+
       <div className="feed-mode-row">
         {([
           ["all", "همه", <SlidersHorizontal size={14} key="a" />],
+          ["for-you", "برای تو", <Sparkles size={14} key="f" />],
           ["new", "جدید", <Clock3 size={14} key="n" />],
           ["popular", "محبوب", <Flame size={14} key="p" />],
           ["saved", "ذخیره‌شده", <Bookmark size={14} key="s" />],
