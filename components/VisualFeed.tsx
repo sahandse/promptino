@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, Play, ImageIcon, Video, X, AlertCircle } from "lucide-react";
-import type { GalleryItem, SourcePromptPayload, SourcePromptRecord } from "@/data/gallery";
+import { AlertCircle, Check, Copy, ExternalLink, Heart, ImageIcon, Play, Video, X } from "lucide-react";
+import type { GalleryItem, VisualFeedPayload, VisualFeedRecord } from "@/data/gallery";
 
-const FAVORITES_KEY = "promptino:media-favorite-items";
+const FAVORITES_KEY = "promptino:media-favorite-items-v2";
 const BATCH = 18;
-const DATA_URL = "https://raw.githubusercontent.com/benyshen/awesome-image-prompts/main/data/prompts.json";
-const RAW_BASE = "https://raw.githubusercontent.com/benyshen/awesome-image-prompts/main/";
-const REPO_BASE = "https://github.com/benyshen/awesome-image-prompts/blob/main/";
+const DATA_URL = "https://raw.githubusercontent.com/Hanyuyu/visual-prompt-feed/main/data/prompts.json";
 
 type MediaTab = "image" | "video";
 
@@ -22,51 +20,44 @@ function readFavorites(): GalleryItem[] {
   }
 }
 
-function detectLanguage(text: string): GalleryItem["language"] {
-  if (/[؀-ۿ]/.test(text)) return "fa";
-  if (/[A-Za-z]/.test(text)) return "en";
-  return "other";
-}
+function isSafePublicItem(record: VisualFeedRecord) {
+  const text = [record.title, record.prompt, ...record.tags, ...record.categories]
+    .join(" ")
+    .toLowerCase();
 
-function extractUrl(source?: string | null) {
-  if (!source) return "";
-  const markdown = source.match(/\((https?:\/\/[^)]+)\)/);
-  if (markdown?.[1]) return markdown[1];
-  const plain = source.match(/https?:\/\/[^\s·]+/);
-  return plain?.[0] || "";
-}
-
-function isSafePublicItem(record: SourcePromptRecord) {
-  const text = [record.title, record.prompt, record.source].filter(Boolean).join(" ").toLowerCase();
   const blocked = [
-    "nsfw", "porn", "explicit sexual", "onlyfans", "fanvue",
-    "nude", "nudity", "fetish", "成人", "裸", "露骨",
+    "nsfw", "porn", "explicit", "nude", "nudity", "fetish",
+    "onlyfans", "fanvue", "lingerie", "bikini", "cleavage",
+    "成人", "裸", "色情", "情趣", "内衣", "比基尼",
   ];
+
   return !blocked.some((term) => text.includes(term));
 }
 
-function toGalleryItem(record: SourcePromptRecord): GalleryItem | null {
-  const prompt = record.prompt?.trim();
-  const mediaPath = record.media_type === "video" ? record.video : record.image;
+function toGalleryItem(record: VisualFeedRecord): GalleryItem | null {
+  if (!record.prompt?.trim() || !record.title?.trim() || !isSafePublicItem(record)) return null;
 
-  if (!prompt || !mediaPath || !isSafePublicItem(record)) return null;
+  const resultMedia =
+    record.media.find((item) => item.type === record.mediaType && item.role === "result") ||
+    record.media.find((item) => item.type === record.mediaType);
 
-  const kind: GalleryItem["kind"] = record.media_type === "video" ? "video" : "image";
-  const title = record.title?.trim() || `${kind === "video" ? "ویدیو" : "تصویر"} #${record.id}`;
-  const sourceUrl = extractUrl(record.source) || REPO_BASE + mediaPath;
-  const category = record.category?.trim() || record.orig_category?.trim() || (kind === "video" ? "video" : "image");
+  if (!resultMedia?.previewUrl) return null;
 
   return {
-    id: `source-${record.id}`,
-    kind,
-    title,
-    prompt,
-    mediaUrl: RAW_BASE + mediaPath,
-    sourceUrl,
-    sourceName: record.source?.trim() || "Awesome Image Prompts",
-    category,
-    tags: [category, kind === "video" ? "ویدیو" : "تصویر"],
-    language: detectLanguage(prompt),
+    id: record.id,
+    kind: record.mediaType,
+    title: record.title.trim(),
+    prompt: record.prompt.trim(),
+    mediaUrl: resultMedia.previewUrl,
+    posterUrl: resultMedia.posterUrl,
+    sourceUrl: record.source.url,
+    sourceName: record.source.author?.handle
+      ? `@${record.source.author.handle}`
+      : record.source.attribution,
+    model: record.recommendedModel,
+    category: record.categories[0] || record.mediaType,
+    tags: record.tags,
+    language: record.language || "original",
   };
 }
 
@@ -101,7 +92,14 @@ function VisualCard({ item, onOpen }: { item: GalleryItem; onOpen: (item: Galler
       <div className="visual-media-wrap" onClick={() => onOpen(item)}>
         {item.kind === "video" ? (
           <>
-            <video className="visual-media" src={item.mediaUrl} controls playsInline preload="metadata" />
+            <video
+              className="visual-media"
+              src={item.mediaUrl}
+              poster={item.posterUrl || undefined}
+              controls
+              playsInline
+              preload="metadata"
+            />
             <span className="media-kind-badge"><Play size={13} /> ویدیو</span>
           </>
         ) : (
@@ -120,9 +118,10 @@ function VisualCard({ item, onOpen }: { item: GalleryItem; onOpen: (item: Galler
 
       <div className="visual-card-body">
         <div className="visual-meta">
-          <span>{item.category}</span>
-          <span>{item.language === "fa" ? "FA" : item.language === "en" ? "EN" : "Original"}</span>
+          <span>{item.model}</span>
+          <span>{item.language.toUpperCase()}</span>
         </div>
+
         <h3>{item.title}</h3>
         <p dir="auto">{item.prompt}</p>
 
@@ -152,13 +151,14 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   useEffect(() => {
     let alive = true;
 
-    fetch(DATA_URL, { cache: "no-store" })
+    fetch(DATA_URL, { cache: "force-cache" })
       .then((response) => {
         if (!response.ok) throw new Error("Source unavailable");
         return response.json();
       })
-      .then((data: SourcePromptPayload) => {
+      .then((data: VisualFeedPayload) => {
         if (!alive || !Array.isArray(data.items)) return;
+
         const realItems = data.items
           .map(toGalleryItem)
           .filter((item): item is GalleryItem => Boolean(item));
@@ -185,10 +185,12 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
   const tabItems = useMemo(() => {
     const q = query.trim().toLowerCase();
+
     return items.filter((item) => {
       if (item.kind !== tab) return false;
       if (!q) return true;
-      return [item.title, item.prompt, item.category, item.sourceName, ...item.tags]
+
+      return [item.title, item.prompt, item.model, item.category, item.sourceName, ...item.tags]
         .join(" ")
         .toLowerCase()
         .includes(q);
@@ -237,7 +239,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       {loadError ? (
         <div className="source-error">
           <AlertCircle size={20} />
-          <span>دریافت دیتای واقعی منبع ناموفق بود؛ هیچ داده دمو نمایش داده نمی‌شود.</span>
+          <span>منبع واقعی در دسترس نیست؛ هیچ داده دمو نمایش داده نمی‌شود.</span>
         </div>
       ) : (
         <>
@@ -264,7 +266,13 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
             <div className="media-modal-stage">
               {selected.kind === "video" ? (
-                <video src={selected.mediaUrl} controls autoPlay playsInline />
+                <video
+                  src={selected.mediaUrl}
+                  poster={selected.posterUrl || undefined}
+                  controls
+                  autoPlay
+                  playsInline
+                />
               ) : (
                 <img src={selected.mediaUrl} alt={selected.title} />
               )}
@@ -272,10 +280,11 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
             <div className="media-modal-info">
               <div>
-                <span className="model-pill">{selected.category}</span>
+                <span className="model-pill">{selected.model}</span>
                 <h3>{selected.title}</h3>
                 <p dir="auto">{selected.prompt}</p>
               </div>
+
               <div className="media-modal-actions">
                 <button className="copy-btn" onClick={() => navigator.clipboard.writeText(selected.prompt)}>
                   <Copy size={17} /> کپی پرامپت
