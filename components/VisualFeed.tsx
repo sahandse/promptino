@@ -15,6 +15,10 @@ import { getActiveAdapters } from "@/lib/sourceAdapters";
 
 const BATCH = 18;
 
+function haptic(ms = 10) {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
+}
+
 type MediaTab = "image" | "video";
 type FeedMode = "all" | "new" | "popular" | "saved" | "history";
 
@@ -47,10 +51,12 @@ function VisualCard({
   }, [item.id]);
 
   function toggleFavorite() {
+    haptic(12);
     setSaved(toggleFavoriteItem(item));
   }
 
   async function copyPrompt() {
+    haptic(8);
     await navigator.clipboard.writeText(item.prompt);
     recordCopy(item);
     setCopied(true);
@@ -100,7 +106,6 @@ function VisualCard({
         </div>
 
         <h3>{item.title}</h3>
-        <p dir="auto">{item.prompt}</p>
 
         <div className="visual-tags">
           <span>{item.model}</span>
@@ -155,6 +160,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [refreshToken, setRefreshToken] = useState(0);
   const [localRevision, setLocalRevision] = useState(0);
   const sentinel = useRef<HTMLDivElement | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -330,6 +336,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   }
 
   async function copySelected(item: GalleryItem) {
+    haptic(8);
     await navigator.clipboard.writeText(item.prompt);
     recordCopy(item);
   }
@@ -338,10 +345,10 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     <section className="visual-feed-section container" id="visual-feed">
       <div className="media-tabs-wrap">
         <div className="media-tabs" role="tablist" aria-label="نوع رسانه">
-          <button className={tab === "image" ? "media-tab active" : "media-tab"} onClick={() => setTab("image")}>
+          <button className={tab === "image" ? "media-tab active" : "media-tab"} onClick={() => { haptic(7); setTab("image"); }}>
             <ImageIcon size={18} /> عکس
           </button>
-          <button className={tab === "video" ? "media-tab active" : "media-tab"} onClick={() => setTab("video")}>
+          <button className={tab === "video" ? "media-tab active" : "media-tab"} onClick={() => { haptic(7); setTab("video"); }}>
             <Video size={18} /> ویدیو
           </button>
         </div>
@@ -431,7 +438,18 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
       {selected && (
         <div className="media-modal" role="dialog" aria-modal="true" onClick={closeItem}>
-          <div className="media-modal-card" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="media-modal-card bottom-sheet"
+            onClick={(event) => event.stopPropagation()}
+            onTouchStart={(event) => { touchStartY.current = event.touches[0]?.clientY ?? null; }}
+            onTouchEnd={(event) => {
+              if (touchStartY.current == null) return;
+              const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
+              if (endY - touchStartY.current > 90) closeItem();
+              touchStartY.current = null;
+            }}
+          >
+            <div className="sheet-handle" aria-hidden="true" />
             <button className="media-modal-close" onClick={closeItem} aria-label="بستن">
               <X size={20} />
             </button>
