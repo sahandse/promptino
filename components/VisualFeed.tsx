@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, Play, ImageIcon, Video } from "lucide-react";
+import { Check, Copy, ExternalLink, Heart, Play, ImageIcon, Video, X } from "lucide-react";
 import { galleryItems, type GalleryItem } from "@/data/gallery";
 
 const FAVORITES_KEY = "promptino:media-favorite-items";
@@ -45,7 +45,7 @@ function makeItem(path: string): GalleryItem {
   };
 }
 
-function VisualCard({ item }: { item: GalleryItem }) {
+function VisualCard({ item, onOpen }: { item: GalleryItem; onOpen: (item: GalleryItem) => void }) {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -73,7 +73,7 @@ function VisualCard({ item }: { item: GalleryItem }) {
 
   return (
     <article className="visual-card">
-      <div className="visual-media-wrap">
+      <div className="visual-media-wrap" onClick={() => onOpen(item)}>
         {item.kind === "video" ? (
           <>
             <video className="visual-media" src={item.mediaUrl} controls playsInline preload="metadata" />
@@ -86,7 +86,7 @@ function VisualCard({ item }: { item: GalleryItem }) {
         <button
           type="button"
           className={saved ? "media-favorite saved" : "media-favorite"}
-          onClick={toggleFavorite}
+          onClick={(event) => { event.stopPropagation(); toggleFavorite(); }}
           aria-label={saved ? "حذف از علاقه‌مندی" : "افزودن به علاقه‌مندی"}
         >
           <Heart size={18} fill={saved ? "currentColor" : "none"} />
@@ -120,6 +120,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [tab, setTab] = useState<MediaTab>("image");
   const [visibleCount, setVisibleCount] = useState(BATCH);
   const [loadingSource, setLoadingSource] = useState(true);
+  const [selected, setSelected] = useState<GalleryItem | null>(null);
   const sentinel = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -215,7 +216,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       </div>
 
       <div className="visual-masonry">
-        {visible.map((item) => <VisualCard key={item.id} item={item} />)}
+        {visible.map((item) => <VisualCard key={item.id} item={item} onOpen={setSelected} />)}
       </div>
 
       {visibleCount < tabItems.length ? (
@@ -224,6 +225,40 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
         </div>
       ) : (
         <div className="feed-end">همه موارد فعلی این بخش بارگذاری شد ✦</div>
+      )}
+
+      {selected && (
+        <div className="media-modal" role="dialog" aria-modal="true" onClick={() => setSelected(null)}>
+          <div className="media-modal-card" onClick={(event) => event.stopPropagation()}>
+            <button className="media-modal-close" onClick={() => setSelected(null)} aria-label="بستن">
+              <X size={20} />
+            </button>
+
+            <div className="media-modal-stage">
+              {selected.kind === "video" ? (
+                <video src={selected.mediaUrl} controls autoPlay playsInline />
+              ) : (
+                <img src={selected.mediaUrl} alt={selected.title} />
+              )}
+            </div>
+
+            <div className="media-modal-info">
+              <div>
+                <span className="model-pill">{selected.model}</span>
+                <h3>{selected.title}</h3>
+                <p>{selected.prompt}</p>
+              </div>
+              <div className="media-modal-actions">
+                <button className="copy-btn" onClick={() => navigator.clipboard.writeText(selected.prompt)}>
+                  <Copy size={17} /> کپی پرامپت
+                </button>
+                <a className="source-btn" href={selected.sourceUrl} target="_blank" rel="noreferrer">
+                  منبع <ExternalLink size={15} />
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );
