@@ -5,12 +5,13 @@ import {
   AlertCircle, Check, Copy, ExternalLink, Heart, ImageIcon, Play, Video, X,
   BadgeCheck, Flag, Link2, Clock3, Flame, Bookmark, History, RefreshCw, SlidersHorizontal,
 } from "lucide-react";
-import type { GalleryItem, VisualFeedPayload } from "@/data/gallery";
+import type { GalleryItem } from "@/data/gallery";
 import {
-  FAVORITES_KEY, HISTORY_KEY, REPORTS_KEY, VISUAL_SOURCE_URL,
+  FAVORITES_KEY, HISTORY_KEY, REPORTS_KEY,
   cacheItems, readCachedItems, readFavorites, readJson, recordCopy,
-  toggleFavoriteItem, transformPayload, writeJson,
+  toggleFavoriteItem, writeJson,
 } from "@/lib/visualSource";
+import { getActiveAdapters } from "@/lib/sourceAdapters";
 
 const BATCH = 18;
 
@@ -162,11 +163,9 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       setLoadError(false);
 
       try {
-        const response = await fetch(VISUAL_SOURCE_URL, { cache: "no-store" });
-        if (!response.ok) throw new Error("Source unavailable");
-
-        const data = (await response.json()) as VisualFeedPayload;
-        const realItems = transformPayload(data);
+        const adapters = getActiveAdapters();
+        const batches = await Promise.all(adapters.map((adapter) => adapter.fetchItems()));
+        const realItems = batches.flat();
 
         if (!alive) return;
         setItems(realItems);
