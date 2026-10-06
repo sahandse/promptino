@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Search, Home as HomeIcon, Heart, Layers3, Database } from "lucide-react";
+import { Search, Home as HomeIcon, Heart, Compass, FolderHeart, History } from "lucide-react";
 import VisualFeed from "@/components/VisualFeed";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -20,6 +20,9 @@ export default function Home() {
         <div className="topbar-actions">
           <ThemeToggle />
           <nav className="desktop-nav">
+            <Link href="/explore">Explore</Link>
+            <Link href="/collections">مجموعه‌ها</Link>
+            <Link href="/history">تاریخچه</Link>
             <Link href="/media-favorites">علاقه‌مندی‌ها</Link>
             <Link href="/sources">منابع</Link>
           </nav>
@@ -42,9 +45,9 @@ export default function Home() {
 
       <nav className="mobile-bottom-nav" aria-label="ناوبری موبایل">
         <Link href="/" className="active"><HomeIcon size={20} /><span>خانه</span></Link>
-        <a href="#visual-feed"><Layers3 size={20} /><span>فید</span></a>
-        <Link href="/media-favorites"><Heart size={20} /><span>علاقه‌مندی</span></Link>
-        <Link href="/sources"><Database size={20} /><span>منابع</span></Link>
+        <Link href="/explore"><Compass size={20} /><span>کشف</span></Link>
+        <Link href="/collections"><FolderHeart size={20} /><span>مجموعه‌ها</span></Link>
+        <Link href="/history"><History size={20} /><span>تاریخچه</span></Link>
       </nav>
     </main>
   );
