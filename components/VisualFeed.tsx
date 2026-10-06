@@ -149,6 +149,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [category, setCategory] = useState("all");
   const [model, setModel] = useState("all");
   const [language, setLanguage] = useState("all");
+  const [provider, setProvider] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
   const sentinel = useRef<HTMLDivElement | null>(null);
@@ -209,7 +210,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
   useEffect(() => {
     setVisibleCount(BATCH);
-  }, [tab, query, mode, category, model, language]);
+  }, [tab, query, mode, category, model, language, provider]);
 
   const categories = useMemo(
     () => Array.from(new Set(items.filter((item) => item.kind === tab).flatMap((item) => item.categories))).sort(),
@@ -223,6 +224,10 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     () => Array.from(new Set(items.filter((item) => item.kind === tab).map((item) => item.language))).sort(),
     [items, tab],
   );
+  const providers = useMemo(
+    () => Array.from(new Map(items.map((item) => [item.providerId, item.providerName])).entries()),
+    [items],
+  );
 
   const tabItems = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -234,6 +239,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
       if (category !== "all" && !item.categories.includes(category)) return false;
       if (model !== "all" && item.model !== model) return false;
       if (language !== "all" && item.language !== language) return false;
+      if (provider !== "all" && item.providerId !== provider) return false;
       if (mode === "saved" && !savedIds.has(item.id)) return false;
       if (mode === "history" && !historyIds.has(item.id)) return false;
       if (!q) return true;
@@ -257,7 +263,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     }
 
     return result;
-  }, [items, tab, query, mode, category, model, language]);
+  }, [items, tab, query, mode, category, model, language, provider]);
 
   const visible = useMemo(() => tabItems.slice(0, visibleCount), [tabItems, visibleCount]);
 
@@ -388,8 +394,9 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
             </select>
           </label>
           <label>منبع
-            <select value="visual-prompt-feed" disabled>
-              <option>Visual Prompt Feed · Verified</option>
+            <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+              <option value="all">همه منابع فعال</option>
+              {providers.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
           </label>
         </div>
@@ -466,6 +473,14 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
                 <button className="copy-btn" onClick={() => copySelected(selected)}>
                   <Copy size={17} /> کپی پرامپت اصلی
                 </button>
+                {selected.translatedPrompt && (
+                  <button
+                    className="source-btn action-button"
+                    onClick={() => navigator.clipboard.writeText(selected.translatedPrompt || "")}
+                  >
+                    <Copy size={15} /> کپی ترجمه معتبر
+                  </button>
+                )}
                 <button className="source-btn action-button" onClick={() => copyLink(selected)}>
                   <Link2 size={15} /> کپی لینک
                 </button>
