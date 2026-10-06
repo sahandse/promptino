@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Search, Home as HomeIcon, Heart, Compass, FolderHeart, History } from "lucide-react";
+import { Search, Home as HomeIcon, Compass, FolderHeart, Clapperboard } from "lucide-react";
 import VisualFeed from "@/components/VisualFeed";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -20,6 +20,7 @@ export default function Home() {
         <div className="topbar-actions">
           <ThemeToggle />
           <nav className="desktop-nav">
+            <Link href="/reels">Reels</Link>
             <Link href="/explore">Explore</Link>
             <Link href="/collections">مجموعه‌ها</Link>
             <Link href="/history">تاریخچه</Link>
@@ -46,11 +47,11 @@ export default function Home() {
 
       <VisualFeed query={query} />
 
-      <nav className="mobile-bottom-nav" aria-label="ناوبری موبایل">
+      <nav className="mobile-bottom-nav reels-nav" aria-label="ناوبری موبایل">
         <Link href="/" className="active"><HomeIcon size={20} /><span>خانه</span></Link>
         <Link href="/explore"><Compass size={20} /><span>کشف</span></Link>
+        <Link href="/reels" className="reels-nav-main"><Clapperboard size={22} /><span>Reels</span></Link>
         <Link href="/collections"><FolderHeart size={20} /><span>مجموعه‌ها</span></Link>
-        <Link href="/history"><History size={20} /><span>تاریخچه</span></Link>
       </nav>
     </main>
   );
