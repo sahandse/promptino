@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, ExternalLink, Heart, ImageIcon, Share2, Video, X } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { cacheItems, readCachedItems, readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { categoryLabel, normalizeSearch } from "@/lib/labels";
 
-const BATCH = 18;
+const PAGE_SIZE = 10;
 
 function haptic(ms = 8) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
@@ -98,11 +98,11 @@ function Skeleton() {
 export default function VisualFeed({ query = "" }: { query?: string }) {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [tab, setTab] = useState<"image" | "video">("image");
-  const [visibleCount, setVisibleCount] = useState(BATCH);
+  const [page, setPage] = useState(1);
+  const [category, setCategory] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
-  const sentinel = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -136,13 +136,24 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   }, []);
 
   useEffect(() => {
-    setVisibleCount(BATCH);
-  }, [tab, query]);
+    setPage(1);
+  }, [tab, query, category]);
+
+  const categories = useMemo(() => {
+    return Array.from(
+      new Set(
+        items
+          .filter((item) => item.kind === tab)
+          .flatMap((item) => item.categories)
+      )
+    ).sort();
+  }, [items, tab]);
 
   const filtered = useMemo(() => {
     const q = normalizeSearch(query);
     return items.filter((item) => {
       if (item.kind !== tab) return false;
+      if (category !== "all" && !item.categories.includes(category)) return false;
       if (!q) return true;
       return normalizeSearch([
         item.title,
@@ -153,21 +164,20 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
         ...item.tags,
       ].join(" ")).includes(q);
     });
-  }, [items, tab, query]);
+  }, [items, tab, query, category]);
 
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const visible = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, currentPage]);
 
-  useEffect(() => {
-    const node = sentinel.current;
-    if (!node) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting) {
-        setVisibleCount((count) => Math.min(count + BATCH, filtered.length));
-      }
-    }, { rootMargin: "700px 0px" });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [filtered.length, visibleCount]);
+  const pageNumbers = useMemo(() => {
+    const start = Math.max(1, Math.min(currentPage - 2, pageCount - 4));
+    const end = Math.min(pageCount, start + 4);
+    return Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => start + index);
+  }, [currentPage, pageCount]);
 
   function openItem(item: GalleryItem) {
     recordViewed(item);
@@ -195,6 +205,18 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
             <Video size={17} /> ویدیو
           </button>
         </div>
+
+        <select
+          className="category-select"
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          aria-label="دسته‌بندی"
+        >
+          <option value="all">همه دسته‌ها</option>
+          {categories.map((value) => (
+            <option key={value} value={value}>{categoryLabel(value)}</option>
+          ))}
+        </select>
       </div>
 
       {loading && !items.length ? (
@@ -206,7 +228,45 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
           <div className="visual-masonry">
             {visible.map((item) => <Card key={item.id} item={item} onOpen={openItem} />)}
           </div>
-          {visibleCount < filtered.length && <div ref={sentinel} className="feed-loader"><span /><span /><span /></div>}
+
+          {filtered.length > PAGE_SIZE && (
+            <nav className="pagination" aria-label="صفحه‌بندی">
+              <button
+                onClick={() => {
+                  setPage((value) => Math.max(1, value - 1));
+                  document.getElementById("visual-feed")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                disabled={currentPage === 1}
+              >
+                قبلی
+              </button>
+
+              <div className="pagination-numbers">
+                {pageNumbers.map((number) => (
+                  <button
+                    key={number}
+                    className={currentPage === number ? "active" : ""}
+                    onClick={() => {
+                      setPage(number);
+                      document.getElementById("visual-feed")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                  >
+                    {number.toLocaleString("fa-IR")}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => {
+                  setPage((value) => Math.min(pageCount, value + 1));
+                  document.getElementById("visual-feed")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                disabled={currentPage === pageCount}
+              >
+                بعدی
+              </button>
+            </nav>
+          )}
         </>
       )}
 
