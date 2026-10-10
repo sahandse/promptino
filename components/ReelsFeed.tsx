@@ -227,7 +227,7 @@ export default function ReelsFeed() {
           (window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number })
             .requestIdleCallback(() => { void loadMore(); }, { timeout: 2200 });
         } else {
-          window.setTimeout(() => { void loadMore(); }, 4500);
+          globalThis.setTimeout(() => { void loadMore(); }, 4500);
         }
       } catch {
         if (alive) setError(true);
