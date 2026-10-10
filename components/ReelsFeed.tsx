@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, ImageIcon, Pause, Play, Share2, Video, Volume2, VolumeX } from "lucide-react";
+import { Check, Copy, Heart, ImageIcon, Pause, Play, Share2, Video, Volume2, VolumeX } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
@@ -176,10 +176,6 @@ function ReelsSlide({
             <span>اشتراک</span>
           </button>
 
-          <a href={item.sourceUrl} target="_blank" rel="noreferrer">
-            <ExternalLink size={25} />
-            <span>منبع</span>
-          </a>
         </aside>
 
         <div className="reels-caption">
@@ -208,9 +204,10 @@ export default function ReelsFeed() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    Promise.all(getActiveAdapters().map((adapter) => adapter.fetchItems()))
-      .then((batches) => {
-        const merged = batches.flat();
+    Promise.allSettled(getActiveAdapters().map((adapter) => adapter.fetchItems()))
+      .then((results) => {
+        const merged = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+        if (!merged.length) throw new Error("No public source available");
         const seen = new Set<string>();
         const unique = merged.filter((item) => {
           const key = `${item.prompt.toLowerCase().trim()}::${item.mediaUrl}`;
