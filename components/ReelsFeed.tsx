@@ -44,7 +44,7 @@ function ReelsVideo({
       muted={muted}
       loop
       playsInline
-      preload="metadata"
+      preload={active ? "metadata" : "none"}
       onError={onBroken}
       onClick={onToggle}
     />
@@ -227,7 +227,7 @@ export default function ReelsFeed() {
           (window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number })
             .requestIdleCallback(() => { void loadMore(); }, { timeout: 2200 });
         } else {
-          window.setTimeout(() => { void loadMore(); }, 900);
+          window.setTimeout(() => { void loadMore(); }, 4500);
         }
       } catch {
         if (alive) setError(true);
