@@ -1,4 +1,4 @@
-const VERSION = "promptino-v2";
+const VERSION = "promptino-v3";
 const SHELL = [
   "/promptino/",
   "/promptino/explore/",
@@ -33,15 +33,7 @@ self.addEventListener("fetch", (event) => {
     url.hostname.endsWith("githubusercontent.com");
 
   if (isData) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(VERSION).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+    event.respondWith(fetch(request));
     return;
   }
 
