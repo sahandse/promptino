@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Promptino | پرامپت‌های آماده هوش مصنوعی",
   description: "کتابخانه فارسی پرامپت واقعی و منبع‌دار برای تصویر و ویدیو.",
   applicationName: "Promptino",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Promptino",
+  },
   manifest: "/promptino/manifest.webmanifest",
   icons: {
     icon: "/promptino/icon.svg",
