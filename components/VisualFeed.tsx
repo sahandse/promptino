@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Heart, ImageIcon, Share2, Video, X } from "lucide-react";
+import { Check, ChevronDown, Copy, Heart, ImageIcon, Share2, Video, X } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { cacheItems, readCachedItems, readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
@@ -73,8 +73,8 @@ function Card({ item, onOpen }: { item: GalleryItem; onOpen: (item: GalleryItem)
         </button>
       </div>
 
-      <div className="visual-card-body">
-        <h3>{item.title}</h3>
+      <div className={item.kind === "image" ? "visual-card-body image-card-actions" : "visual-card-body"}>
+        {item.kind === "video" && <h3>{item.title}</h3>}
         <button className="copy-btn minimal-copy" onClick={copyPrompt}>
           {copied ? <Check size={16} /> : <Copy size={16} />}
           {copied ? "کپی شد" : "کپی"}
@@ -104,45 +104,71 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [shuffleSeed] = useState(() => Math.random());
 
   useEffect(() => {
     let alive = true;
+    const adapters = getActiveAdapters();
+    const merged = new Map<string, GalleryItem>();
+
+    const rank = (id: string) => {
+      let hash = Math.floor(shuffleSeed * 2147483647) || 1;
+      for (let i = 0; i < id.length; i += 1) hash = (hash * 33 + id.charCodeAt(i)) >>> 0;
+      return hash;
+    };
+
+    const publish = (batch: GalleryItem[]) => {
+      for (const item of batch) {
+        const key = item.prompt.trim().toLowerCase() + "::" + item.mediaUrl;
+        if (!merged.has(key)) merged.set(key, item);
+      }
+      const unique = [...merged.values()];
+      const imageItems = unique
+        .filter((item) => item.kind === "image")
+        .sort((a, b) => rank(a.id) - rank(b.id));
+      const videoItems = unique.filter((item) => item.kind === "video");
+      const next = [...imageItems, ...videoItems];
+      if (!alive) return;
+      setItems(next);
+      window.setTimeout(() => cacheItems(next).catch(() => undefined), 1200);
+    };
 
     async function load() {
       try {
-        const results = await Promise.allSettled(getActiveAdapters().map((adapter) => adapter.fetchItems()));
-        const merged = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
-        if (!merged.length) throw new Error("No public source available");
-        const seen = new Set<string>();
-        const unique = merged.filter((item) => {
-          const key = item.prompt.trim().toLowerCase() + "::" + item.mediaUrl;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        if (!alive) return;
-        const imageItems = unique.filter((item) => item.kind === "image");
-        const videoItems = unique.filter((item) => item.kind === "video");
-        for (let i = imageItems.length - 1; i > 0; i -= 1) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [imageItems[i], imageItems[j]] = [imageItems[j], imageItems[i]];
+        if (!adapters.length) throw new Error("No public source available");
+
+        const primary = await adapters[0].fetchItems();
+        if (!primary.length) throw new Error("Primary source unavailable");
+        publish(primary);
+        if (alive) setLoading(false);
+
+        const loadMore = async () => {
+          const results = await Promise.allSettled(adapters.slice(1).map((adapter) => adapter.fetchItems()));
+          if (!alive) return;
+          for (const result of results) {
+            if (result.status === "fulfilled" && result.value.length) publish(result.value);
+          }
+        };
+
+        if ("requestIdleCallback" in window) {
+          (window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number })
+            .requestIdleCallback(() => { void loadMore(); }, { timeout: 1800 });
+        } else {
+          window.setTimeout(() => { void loadMore(); }, 700);
         }
-        const randomized = [...imageItems, ...videoItems];
-        setItems(randomized);
-        await cacheItems(randomized);
       } catch {
         const cached = await readCachedItems().catch(() => null);
         if (!alive) return;
         if (cached?.items?.length) setItems(cached.items);
         else setError(true);
-      } finally {
-        if (alive) setLoading(false);
+        setLoading(false);
       }
     }
 
-    load();
+    void load();
     return () => { alive = false; };
-  }, []);
+  }, [shuffleSeed]);
 
   useEffect(() => {
     setPage(1);
@@ -216,17 +242,15 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
           </button>
         </div>
 
-        <select
-          className="category-select"
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          aria-label="دسته‌بندی"
+        <button
+          className="category-trigger"
+          onClick={() => setCategoryOpen(true)}
+          aria-haspopup="dialog"
+          aria-expanded={categoryOpen}
         >
-          <option value="all">همه دسته‌ها</option>
-          {categories.map((value) => (
-            <option key={value} value={value}>{categoryLabel(value)}</option>
-          ))}
-        </select>
+          <span>{category === "all" ? "همه دسته‌ها" : categoryLabel(category)}</span>
+          <ChevronDown size={16} />
+        </button>
       </div>
 
       {loading && !items.length ? (
@@ -278,6 +302,37 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
             </nav>
           )}
         </>
+      )}
+
+      {categoryOpen && (
+        <div className="category-sheet-backdrop" role="presentation" onClick={() => setCategoryOpen(false)}>
+          <div className="category-sheet" role="dialog" aria-modal="true" aria-label="انتخاب دسته‌بندی" onClick={(event) => event.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="category-sheet-head">
+              <strong>دسته‌بندی</strong>
+              <button onClick={() => setCategoryOpen(false)} aria-label="بستن"><X size={19} /></button>
+            </div>
+            <div className="category-sheet-list">
+              <button
+                className={category === "all" ? "active" : ""}
+                onClick={() => { setCategory("all"); setCategoryOpen(false); }}
+              >
+                <span>همه دسته‌ها</span>
+                {category === "all" && <Check size={16} />}
+              </button>
+              {categories.map((value) => (
+                <button
+                  key={value}
+                  className={category === value ? "active" : ""}
+                  onClick={() => { setCategory(value); setCategoryOpen(false); }}
+                >
+                  <span>{categoryLabel(value)}</span>
+                  {category === value && <Check size={16} />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {selected && (
