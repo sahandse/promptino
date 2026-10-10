@@ -180,13 +180,10 @@ function ReelsSlide({
 
         <div className="reels-caption">
           <div className="reels-badges">
-            <span>{item.kind === "video" ? "ویدیو" : "عکس"}</span>
             <span>{categoryLabel(item.category)}</span>
-            <span>{item.model}</span>
           </div>
           <h2>{item.title}</h2>
           <p dir="auto">{item.prompt}</p>
-          <small>{item.sourceName} · Quality {item.qualityScore.toLocaleString("fa-IR")}%</small>
         </div>
       </div>
     </article>
