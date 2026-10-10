@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, Heart, ImageIcon, Pause, Play, Share2, Video, Volume2, VolumeX } from "lucide-react";
+import { Check, Copy, Heart, ImageIcon, Play, Share2, Video, Volume2, VolumeX } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
@@ -159,13 +159,6 @@ function ReelsSlide({
             <span>ذخیره</span>
           </button>
 
-          {item.kind === "video" && (
-            <button onClick={() => setPaused((value) => !value)}>
-              {paused ? <Play size={25} /> : <Pause size={25} />}
-              <span>{paused ? "پخش" : "توقف"}</span>
-            </button>
-          )}
-
           <button onClick={copyPrompt}>
             {copied ? <Check size={25} /> : <Copy size={25} />}
             <span>{copied ? "کپی شد" : "کپی"}</span>
@@ -201,21 +194,48 @@ export default function ReelsFeed() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    Promise.allSettled(getActiveAdapters().map((adapter) => adapter.fetchItems()))
-      .then((results) => {
-        const merged = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
-        if (!merged.length) throw new Error("No public source available");
-        const seen = new Set<string>();
-        const unique = merged.filter((item) => {
-          const key = `${item.prompt.toLowerCase().trim()}::${item.mediaUrl}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        setItems(unique);
-        setActiveId(unique[0]?.id || null);
-      })
-      .catch(() => setError(true));
+    let alive = true;
+    const adapters = getActiveAdapters();
+    const merged = new Map<string, GalleryItem>();
+
+    const publish = (batch: GalleryItem[]) => {
+      for (const item of batch) {
+        const key = `${item.prompt.toLowerCase().trim()}::${item.mediaUrl}`;
+        if (!merged.has(key)) merged.set(key, item);
+      }
+      if (!alive) return;
+      const unique = [...merged.values()];
+      setItems(unique);
+      setActiveId((current) => current || unique[0]?.id || null);
+    };
+
+    async function load() {
+      try {
+        if (!adapters.length) throw new Error("No public source available");
+        const primary = await adapters[0].fetchItems();
+        publish(primary);
+
+        const loadMore = async () => {
+          const results = await Promise.allSettled(adapters.slice(1).map((adapter) => adapter.fetchItems()));
+          if (!alive) return;
+          for (const result of results) {
+            if (result.status === "fulfilled" && result.value.length) publish(result.value);
+          }
+        };
+
+        if ("requestIdleCallback" in window) {
+          (window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number })
+            .requestIdleCallback(() => { void loadMore(); }, { timeout: 2200 });
+        } else {
+          window.setTimeout(() => { void loadMore(); }, 900);
+        }
+      } catch {
+        if (alive) setError(true);
+      }
+    }
+
+    void load();
+    return () => { alive = false; };
   }, []);
 
   useEffect(() => {
