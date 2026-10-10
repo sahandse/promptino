@@ -522,3 +522,52 @@ button,a,input,select{touch-action:manipulation}
     max-width:calc(100vw - 28px);
   }
 }
+
+/* Critical mobile scroll fix */
+@media(max-width:760px){
+  html,body{
+    height:auto!important;
+    min-height:100%!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:auto!important;
+    touch-action:pan-y!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  body{
+    position:static!important;
+  }
+  .app-shell{
+    position:relative!important;
+    min-height:100dvh!important;
+    height:auto!important;
+    overflow:visible!important;
+    touch-action:pan-y!important;
+  }
+  .app-topbar{
+    position:sticky;
+  }
+  .app-search-wrap{
+    position:relative!important;
+    top:auto!important;
+    z-index:10;
+  }
+  .simple-media-tabs,
+  .media-tabs-wrap{
+    position:relative!important;
+    top:auto!important;
+    z-index:10;
+  }
+  .visual-feed-section,
+  .visual-masonry{
+    overflow:visible!important;
+    touch-action:pan-y!important;
+  }
+  .visual-card{
+    content-visibility:visible!important;
+    contain:none!important;
+  }
+  .visual-media{
+    transform:none!important;
+  }
+}
