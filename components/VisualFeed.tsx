@@ -7,8 +7,8 @@ import { cacheItems, readCachedItems, readFavorites, recordCopy, recordViewed, t
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { categoryLabel, normalizeSearch } from "@/lib/labels";
 
-const IMAGE_PAGE_SIZE = 15;
-const VIDEO_PAGE_SIZE = 10;
+const IMAGE_PAGE_SIZE = 30;
+const VIDEO_PAGE_SIZE = 30;
 
 function haptic(ms = 8) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
@@ -87,7 +87,7 @@ function Card({ item, onOpen }: { item: GalleryItem; onOpen: (item: GalleryItem)
 function Skeleton() {
   return (
     <div className="visual-masonry skeleton-feed" aria-hidden="true">
-      {Array.from({ length: 15 }).map((_, index) => (
+      {Array.from({ length: 12 }).map((_, index) => (
         <div className="visual-card skeleton-card" key={index}>
           <div className="skeleton-media" />
         </div>
@@ -111,8 +111,9 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
 
     async function load() {
       try {
-        const batches = await Promise.all(getActiveAdapters().map((adapter) => adapter.fetchItems()));
-        const merged = batches.flat();
+        const results = await Promise.allSettled(getActiveAdapters().map((adapter) => adapter.fetchItems()));
+        const merged = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
+        if (!merged.length) throw new Error("No public source available");
         const seen = new Set<string>();
         const unique = merged.filter((item) => {
           const key = item.prompt.trim().toLowerCase() + "::" + item.mediaUrl;
