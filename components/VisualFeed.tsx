@@ -155,7 +155,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
           (window as Window & { requestIdleCallback: (callback: () => void, options?: { timeout: number }) => number })
             .requestIdleCallback(() => { void loadMore(); }, { timeout: 1800 });
         } else {
-          window.setTimeout(() => { void loadMore(); }, 700);
+          window.setTimeout(() => { void loadMore(); }, 4000);
         }
       } catch {
         const cached = await readCachedItems().catch(() => null);
