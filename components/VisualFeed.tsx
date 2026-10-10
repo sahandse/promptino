@@ -87,7 +87,7 @@ function Card({ item, onOpen }: { item: GalleryItem; onOpen: (item: GalleryItem)
 function Skeleton() {
   return (
     <div className="visual-masonry skeleton-feed" aria-hidden="true">
-      {Array.from({ length: 10 }).map((_, index) => (
+      {Array.from({ length: 15 }).map((_, index) => (
         <div className="visual-card skeleton-card" key={index}>
           <div className="skeleton-media" />
         </div>
@@ -104,6 +104,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
+  const [shuffleSeed] = useState(() => Math.random());
 
   useEffect(() => {
     let alive = true;
