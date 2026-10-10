@@ -104,7 +104,7 @@ html[data-theme="light"] .media-favorite.saved{background:#fff0f3;color:#d92d20}
 @media(max-width:760px){.discover-actions{margin-inline:-2px}.discover-actions button{font-size:10px;padding:8px 10px}.health-grid,.stats-grid{grid-template-columns:1fr 1fr;gap:9px}.health-row{grid-template-columns:1fr auto}.health-row small{grid-column:1/-1}}
 
 body{font-family:Vazirmatn,Tahoma,Arial,sans-serif}.quick-chips{display:flex;gap:7px;overflow:auto;padding:0 0 10px;scrollbar-width:none}.quick-chips::-webkit-scrollbar{display:none}.quick-chip{white-space:nowrap;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:7px 10px;font-size:10px;cursor:pointer}.quick-chip.active{background:#211b3e;border-color:#7568e8;color:#c9c3ff}
-@media(min-width:1100px){.visual-feed-section{display:grid;grid-template-columns:220px minmax(0,1fr);column-gap:18px}.media-tabs-wrap,.quick-chips,.discover-actions,.feed-mode-row,.advanced-filters,.source-error,.skeleton-feed,.feed-empty,.feed-loader,.feed-end{grid-column:2}.visual-masonry{grid-column:2}.advanced-filters{grid-template-columns:1fr}.feed-mode-row{position:sticky;top:136px;align-self:start;z-index:8}.quick-chips{padding-top:2px}}
+@media(min-width:1100px){.visual-feed-section{display:block}.visual-masonry{width:100%}}
 
 .visual-card{content-visibility:auto;contain-intrinsic-size:420px}.category-card,.trend-card,.collection-card,.history-card{content-visibility:auto;contain-intrinsic-size:220px}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
@@ -336,3 +336,32 @@ button,a,input,select{touch-action:manipulation}
     font-size:10px;
   }
 }
+
+/* UI review fixes */
+@media(max-width:760px){
+  .simple-media-tabs{
+    top:124px;
+  }
+  .pagination{
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+}
+@media(max-width:390px){
+  .simple-media-tabs{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .simple-media-tabs .media-tabs{
+    width:100%;
+  }
+  .category-select{
+    width:100%;
+  }
+}
+@media(min-width:761px){
+  .visual-feed-section{
+    width:min(1180px,calc(100% - 28px));
+  }
+}
+.reels-caption small{display:none}
