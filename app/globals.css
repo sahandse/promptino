@@ -571,3 +571,22 @@ button,a,input,select{touch-action:manipulation}
     transform:none!important;
   }
 }
+
+@media(max-width:760px){
+  .visual-masonry{
+    columns:auto!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+    align-items:start!important;
+  }
+  .visual-card{
+    margin:0!important;
+    break-inside:auto!important;
+  }
+}
+@media(max-width:360px){
+  .visual-masonry{
+    grid-template-columns:1fr!important;
+  }
+}
