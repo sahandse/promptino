@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Heart, ImageIcon, Share2, Video, X } from "lucide-react";
+import { Check, Copy, Heart, ImageIcon, Share2, Video, X } from "lucide-react";
 import type { GalleryItem } from "@/data/gallery";
 import { cacheItems, readCachedItems, readFavorites, recordCopy, recordViewed, toggleFavoriteItem } from "@/lib/visualSource";
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { categoryLabel, normalizeSearch } from "@/lib/labels";
 
-const PAGE_SIZE = 10;
+const IMAGE_PAGE_SIZE = 15;
+const VIDEO_PAGE_SIZE = 10;
 
 function haptic(ms = 8) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
@@ -119,8 +120,15 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
           return true;
         });
         if (!alive) return;
-        setItems(unique);
-        await cacheItems(unique);
+        const imageItems = unique.filter((item) => item.kind === "image");
+        const videoItems = unique.filter((item) => item.kind === "video");
+        for (let i = imageItems.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [imageItems[i], imageItems[j]] = [imageItems[j], imageItems[i]];
+        }
+        const randomized = [...imageItems, ...videoItems];
+        setItems(randomized);
+        await cacheItems(randomized);
       } catch {
         const cached = await readCachedItems().catch(() => null);
         if (!alive) return;
@@ -166,12 +174,13 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     });
   }, [items, tab, query, category]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageSize = tab === "image" ? IMAGE_PAGE_SIZE : VIDEO_PAGE_SIZE;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const visible = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, currentPage]);
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   const pageNumbers = useMemo(() => {
     const start = Math.max(1, Math.min(currentPage - 2, pageCount - 4));
@@ -229,7 +238,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
             {visible.map((item) => <Card key={item.id} item={item} onOpen={openItem} />)}
           </div>
 
-          {filtered.length > PAGE_SIZE && (
+          {filtered.length > pageSize && (
             <nav className="pagination" aria-label="صفحه‌بندی">
               <button
                 onClick={() => {
@@ -299,9 +308,6 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
                   <Copy size={16} /> کپی
                 </button>
                 <button className="source-btn action-button" onClick={() => share(selected)}><Share2 size={15} /> اشتراک</button>
-                <a className="source-btn action-button" href={selected.sourceUrl} target="_blank" rel="noreferrer">
-                  منبع <ExternalLink size={15} />
-                </a>
               </div>
             </div>
           </div>
