@@ -46,7 +46,7 @@ function Card({ item, onOpen }: { item: GalleryItem; onOpen: (item: GalleryItem)
             poster={item.posterUrl || undefined}
             muted
             playsInline
-            preload="metadata"
+            preload="none"
             onError={() => setBroken(true)}
           />
         ) : (
@@ -104,7 +104,6 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
-  const [shuffleSeed] = useState(() => Math.random());
 
   useEffect(() => {
     let alive = true;
