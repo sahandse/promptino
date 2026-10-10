@@ -7,8 +7,8 @@ import { cacheItems, readCachedItems, readFavorites, recordCopy, recordViewed, t
 import { getActiveAdapters } from "@/lib/sourceAdapters";
 import { categoryLabel, normalizeSearch } from "@/lib/labels";
 
-const IMAGE_PAGE_SIZE = 30;
-const VIDEO_PAGE_SIZE = 30;
+const MOBILE_PAGE_SIZE = 10;
+const DESKTOP_PAGE_SIZE = 30;
 
 function haptic(ms = 8) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(ms);
@@ -87,7 +87,7 @@ function Card({ item, onOpen }: { item: GalleryItem; onOpen: (item: GalleryItem)
 function Skeleton() {
   return (
     <div className="visual-masonry skeleton-feed" aria-hidden="true">
-      {Array.from({ length: 12 }).map((_, index) => (
+      {Array.from({ length: 10 }).map((_, index) => (
         <div className="visual-card skeleton-card" key={index}>
           <div className="skeleton-media" />
         </div>
@@ -105,6 +105,7 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   const [error, setError] = useState(false);
   const [selected, setSelected] = useState<GalleryItem | null>(null);
   const [categoryOpen, setCategoryOpen] = useState(false);
+  const [pageSize, setPageSize] = useState(MOBILE_PAGE_SIZE);
   const [shuffleSeed] = useState(() => Math.random());
 
   useEffect(() => {
@@ -171,6 +172,17 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
   }, [shuffleSeed]);
 
   useEffect(() => {
+    const media = window.matchMedia("(max-width: 760px)");
+    const syncPageSize = () => {
+      setPageSize(media.matches ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE);
+      setPage(1);
+    };
+    syncPageSize();
+    media.addEventListener?.("change", syncPageSize);
+    return () => media.removeEventListener?.("change", syncPageSize);
+  }, []);
+
+  useEffect(() => {
     setPage(1);
   }, [tab, query, category]);
 
@@ -201,7 +213,6 @@ export default function VisualFeed({ query = "" }: { query?: string }) {
     });
   }, [items, tab, query, category]);
 
-  const pageSize = tab === "image" ? IMAGE_PAGE_SIZE : VIDEO_PAGE_SIZE;
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const visible = useMemo(() => {
